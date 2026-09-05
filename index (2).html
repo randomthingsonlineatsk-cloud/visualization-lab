@@ -1,0 +1,2071 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Visualization Lab — free, interactive physics, chemistry and biology simulations you can run right in your browser. No signup, no install.">
+<title>Visualization Lab</title>
+<style>
+  :root{
+    --paper: #EAF0F4;
+    --paper-panel: #DDE7EE;
+    --grid: #C4D3DE;
+    --ink: #14213A;
+    --ink-soft: #4B5C74;
+    --teal: #1F6F78;
+    --gold: #C98A2C;
+    --rule: #AFC1CF;
+    --pink: #C24B76;
+  }
+  *{box-sizing:border-box;}
+  [hidden]{ display: none !important; }
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--paper);
+    background-image:
+      linear-gradient(var(--grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+    background-size: 28px 28px;
+    color:var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    min-height:100vh;
+    padding: clamp(16px, 3vw, 36px);
+  }
+  .wrap{ max-width: 1280px; margin: 0 auto; }
+  header{
+    border-bottom: 1px solid var(--rule);
+    padding-bottom: 14px;
+    margin-bottom: 22px;
+  }
+  h1{
+    font-family: Georgia, "Iowan Old Style", "Times New Roman", serif;
+    font-weight: 400;
+    font-size: clamp(26px, 3.2vw, 34px);
+    margin: 0 0 4px;
+  }
+  h1 em{ font-style: italic; color: var(--teal); }
+  .tagline{ font-size: 13px; color: var(--ink-soft); }
+
+  .app{ display:grid; grid-template-columns: 210px 1fr; gap: 28px; }
+  @media (max-width: 860px){
+    .app{ grid-template-columns: 1fr; }
+    .sidebar{ display:flex; flex-wrap:wrap; gap: 4px 18px; }
+    .nav-cat{ margin-bottom:0; }
+  }
+
+  .sidebar{ padding-top: 4px; }
+  .nav-cat{ margin-bottom: 20px; }
+  .nav-cat-title{
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 11px; color: var(--ink-soft); margin-bottom: 6px;
+  }
+  .nav-item{
+    display:block; width:100%; text-align:left; background:none; border:none;
+    border-left: 2px solid transparent; padding: 6px 0 6px 10px;
+    font-size: 13.5px; color: var(--ink); cursor:pointer; font-family: inherit;
+  }
+  .nav-item:hover{ color: var(--teal); }
+  .nav-item.active{ border-left-color: var(--teal); color: var(--teal); background: rgba(31,111,120,0.08); }
+
+  .exp-header{ margin-bottom: 18px; display:flex; justify-content:space-between; align-items:flex-end; gap:16px; flex-wrap:wrap; }
+  .exp-title{ font-family: Georgia, "Iowan Old Style", "Times New Roman", serif; font-size: 22px; margin: 0 0 4px; }
+  .exp-blurb{ font-size: 13px; color: var(--ink-soft); max-width: 560px; line-height:1.5; }
+
+  .view-toggle{ display:flex; gap:6px; }
+  .view-btn{
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 11px; background: transparent; border:1px solid var(--rule);
+    color: var(--ink-soft); padding: 5px 10px; border-radius:2px; cursor:pointer;
+  }
+  .view-btn:hover, .view-btn.active{ border-color: var(--teal); color: var(--teal); }
+
+  .stage{ display:grid; grid-template-columns: 240px 1fr; gap: 24px; }
+  @media (max-width: 640px){ .stage{ grid-template-columns: 1fr; } }
+  .panel{ background: var(--paper-panel); border: 1px solid var(--rule); border-radius: 2px; padding: 18px 16px; align-self: start; }
+  .field{ margin-bottom: 20px; }
+  .field:last-child{ margin-bottom:0; }
+  .field-label{ display:flex; justify-content:space-between; align-items:baseline; font-size: 12.5px; color: var(--ink-soft); margin-bottom: 8px; }
+  .field-value{ font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 13px; color: var(--ink); }
+  input[type=range]{ -webkit-appearance:none; appearance:none; width:100%; height:2px; background: var(--rule); outline:none; margin: 14px 0 6px; }
+  input[type=range]::-webkit-slider-thumb{ -webkit-appearance:none; width:14px; height:14px; border-radius:50%; background: var(--teal); border:2px solid var(--paper); box-shadow: 0 0 0 1px var(--teal); cursor:pointer; margin-top:-6px; }
+  input[type=range]::-moz-range-thumb{ width:12px; height:12px; border-radius:50%; background: var(--teal); border:2px solid var(--paper); box-shadow: 0 0 0 1px var(--teal); cursor:pointer; }
+  .ticks{ display:flex; justify-content:space-between; font-size:10.5px; color: var(--ink-soft); }
+  .launch-btn{ width:100%; margin-top: 6px; padding: 11px; background: var(--teal); color: var(--paper); border:none; border-radius:2px; font-size: 14px; letter-spacing:0.3px; cursor:pointer; font-family:inherit; }
+  .launch-btn:hover{ background:#185a61; }
+  .launch-btn:disabled{ background: var(--ink-soft); cursor:default; }
+
+  .canvas-panel{ background: var(--paper-panel); border:1px solid var(--rule); border-radius:2px; padding: 18px; position:relative; }
+  #plot{ width:100%; height: 380px; display:block; }
+  .readouts{ display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--rule); }
+  .readout{ flex: 1 1 100px; }
+  .readout .k{ font-size:11px; color:var(--ink-soft); margin-bottom:3px; }
+  .readout .v{ font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size:16px; color:var(--ink); }
+  .readout .v span{ font-size:12px; color:var(--ink-soft); }
+  footer{ margin-top: 16px; font-size: 12px; color: var(--ink-soft); line-height:1.6; }
+
+  .about-panel{
+    margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--rule);
+  }
+  .about-details{
+    font-size: 14px; line-height: 1.65; color: var(--ink); max-width: 720px; margin: 0 0 18px;
+  }
+  .math-block{ background: var(--paper-panel); border:1px solid var(--rule); border-radius:2px; padding: 16px 18px; max-width: 560px; }
+  .math-heading{ font-family: Georgia, serif; font-size: 15px; margin-bottom: 10px; color: var(--ink); }
+  .math-formula{ font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 13.5px; line-height: 1.9; color: var(--teal); margin-bottom: 10px; }
+  .math-vars{ list-style:none; margin:0; padding:0; font-size: 12.5px; color: var(--ink-soft); line-height: 1.7; }
+  .math-vars li{ display:flex; gap: 6px; }
+  .math-vars .sym{ font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; color: var(--ink); min-width: 34px; }
+
+  .site-footer{
+    margin-top: 30px; padding-top: 16px; border-top: 1px solid var(--rule);
+    display:flex; justify-content:space-between; align-items:center;
+    font-size: 12.5px; color: var(--ink-soft);
+  }
+  .admin-link{
+    background:none; border:1px solid var(--rule); color: var(--ink-soft);
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 11px; padding: 5px 10px; border-radius:2px; cursor:pointer;
+  }
+  .admin-link:hover{ border-color: var(--teal); color: var(--teal); }
+
+  .admin-overlay{
+    position: fixed; inset:0; background: rgba(20,33,58,0.45);
+    display:flex; align-items:center; justify-content:center; z-index:50;
+  }
+  .admin-box{
+    background: var(--paper); border:1px solid var(--rule); border-radius:2px;
+    padding: 24px; width: 300px; max-width: 90vw;
+  }
+  .admin-box-title{ font-family: Georgia, serif; font-size: 18px; margin-bottom: 8px; }
+  .admin-note{ font-size: 12px; color: var(--ink-soft); line-height:1.5; margin: 0 0 14px; }
+  #adminPassword{
+    width:100%; padding: 9px 10px; border: 1px solid var(--rule); border-radius:2px;
+    background: var(--paper-panel); color: var(--ink); font-size: 13px; font-family: inherit;
+    margin-bottom: 8px;
+  }
+  .admin-error{ font-size: 12px; color: var(--pink); min-height: 16px; margin-bottom: 6px; }
+  .admin-actions{ display:flex; gap:8px; justify-content:flex-end; }
+  .admin-btn{
+    padding: 8px 14px; border-radius:2px; border:none; cursor:pointer;
+    font-size: 13px; font-family: inherit; background: var(--teal); color: var(--paper);
+  }
+  .admin-btn:hover{ background:#185a61; }
+  .admin-btn.ghost{ background:transparent; border:1px solid var(--rule); color: var(--ink-soft); }
+  .admin-btn.ghost:hover{ border-color: var(--teal); color: var(--teal); }
+
+  .admin-panel{
+    position: fixed; right: 20px; bottom: 20px; top: 20px; width: min(480px, 90vw);
+    background: var(--paper); border:1px solid var(--rule); border-radius:2px;
+    padding: 20px; z-index: 40; display:flex; flex-direction:column;
+    box-shadow: -8px 0 24px rgba(20,33,58,0.15);
+  }
+  .admin-panel-head{ display:flex; justify-content:space-between; align-items:center; margin-bottom: 6px; }
+  .admin-panel-head h3{ font-family: Georgia, serif; font-weight:400; font-size: 18px; margin:0; }
+  #adminInput{
+    flex:1; width:100%; margin: 10px 0; padding: 10px;
+    background: var(--paper-panel); border:1px solid var(--rule); border-radius:2px;
+    color: var(--ink); font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 12px; line-height:1.5; resize: none;
+  }
+  .admin-status{ font-size: 12px; color: var(--teal); margin-top: 8px; min-height: 16px; }
+  @media (max-width: 600px){
+    .admin-panel{ left:10px; right:10px; top:10px; bottom:10px; width:auto; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Visualization <em>Lab</em></h1>
+    <div class="tagline">Pick an experiment, move its sliders, press Launch. Scene shows the illustrated concept; Data shows the underlying curve.</div>
+  </header>
+
+  <div class="app">
+    <nav class="sidebar" id="sidebar"></nav>
+    <main>
+      <div class="exp-header">
+        <div>
+          <h2 class="exp-title" id="expTitle"></h2>
+          <div class="exp-blurb" id="expBlurb"></div>
+        </div>
+        <div class="view-toggle">
+          <button class="view-btn" data-view="scene">Scene</button>
+          <button class="view-btn" data-view="data">Data</button>
+        </div>
+      </div>
+      <div class="stage">
+        <div class="panel" id="controls"></div>
+        <div class="canvas-panel">
+          <canvas id="plot"></canvas>
+          <div class="readouts" id="readouts"></div>
+        </div>
+      </div>
+      <div class="about-panel">
+        <p class="about-details" id="aboutDetails"></p>
+        <div class="math-block">
+          <div class="math-heading">The maths</div>
+          <div class="math-formula" id="mathFormula"></div>
+          <ul class="math-vars" id="mathVars"></ul>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <div class="site-footer">
+    <div class="credit">Made by Khan Gulrez Shagufa Fazal Ahmed</div>
+    <button class="admin-link" id="adminLink" hidden>Admin</button>
+  </div>
+
+  <div class="admin-overlay" id="adminOverlay" hidden>
+    <div class="admin-box">
+      <div class="admin-box-title">Admin sign-in</div>
+      <p class="admin-note">This area is only for adding new experiments. Everyone else on the site never sees it.</p>
+      <input type="password" id="adminPassword" placeholder="Password" autocomplete="off">
+      <div class="admin-error" id="adminError"></div>
+      <div class="admin-actions">
+        <button class="admin-btn ghost" id="adminCancel">Cancel</button>
+        <button class="admin-btn" id="adminSubmit">Unlock</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="admin-panel" id="adminPanel" hidden>
+    <div class="admin-panel-head">
+      <h3>Add an experiment</h3>
+      <button class="admin-btn ghost" id="adminLock">Lock</button>
+    </div>
+    <p class="admin-note">Paste one experiment object here — the same shape described in the "HOW TO ADD A NEW EXPERIMENT" comment inside the code. <strong>Preview</strong> tries it out live in this browser only. <strong>Download updated site</strong> bakes it into a new <code>index.html</code> you re-upload to GitHub so everyone sees it.</p>
+    <textarea id="adminInput" spellcheck="false" placeholder="{
+  id: &quot;wave-interference&quot;,
+  category: &quot;Physics&quot;,
+  title: &quot;Wave interference&quot;,
+  blurb: &quot;...&quot;,
+  params: [ ... ],
+  compute(p){ ... },
+  scene(ctx, rect, p, spec, progress){ ... }
+},"></textarea>
+    <div class="admin-error" id="adminEvalError"></div>
+    <div class="admin-actions">
+      <button class="admin-btn ghost" id="adminPreview">Preview live</button>
+      <button class="admin-btn" id="adminDownload">Download updated site</button>
+    </div>
+    <div class="admin-status" id="adminStatus"></div>
+  </div>
+</div>
+
+<script>
+/* =====================================================================
+   HOW TO ADD A NEW EXPERIMENT
+   ---------------------------------------------------------------------
+   Push an object onto EXPERIMENTS. Shape:
+
+   {
+     id, category, title, blurb,
+     details: "a few sentences explaining the concept in plain language — shown under the experiment",
+     math: {
+       formula: [ "one or more equation lines, shown in the maths box" ],
+       vars: [ {sym:"v", desc:"what this symbol means"}, ... ]
+     },
+     params: [ {key,label,min,max,step,default,unit}, ... ],
+
+     compute(p) {
+       // p keyed by each param's `key`. Return:
+       return {
+         xLabel, yLabel, xMax, yMax,      // for the Data (graph) view
+         pathAt(u){ return {x,y}; },      // point at fraction u of the process
+         raw: { ...any numbers the scene needs, e.g. range, period, Veq },
+         extraMarkers: [{x,y,color}],     // optional dots on the graph
+         readouts: [{label,value,unit}]
+       };
+     },
+
+     scene(ctx, rect, p, spec, progress) {
+       // Draw the illustrated concept (a cannon, a flask, a petri dish...)
+       // into ctx, sized to `rect` ({width,height}). `progress` is null
+       // when idle, 0->1 while Launch is animating. Use spec.raw / p for
+       // the numbers driving the illustration. Helper colors/utilities
+       // are on the COLORS object and the helper functions below it.
+     }
+   }
+
+   The shell wires up the sidebar, sliders, Scene/Data toggle, and the
+   readout row automatically.
+   ===================================================================== */
+
+const EXPERIMENTS = [
+
+  // ---------------- PHYSICS ----------------
+  {
+    id: "projectile",
+    category: "Physics",
+    title: "Projectile motion",
+    blurb: "A launched object under gravity, no air resistance.",
+    details: "When something is thrown or fired into the air, gravity is the only force acting on it once it leaves your hand — we're ignoring air resistance here. Its horizontal motion never speeds up or slows down, while its vertical motion behaves exactly like an object dropped from a height, accelerating downward at a constant rate. Combining these two independent motions produces the curved arc — a parabola — that every thrown object follows, whether it's a cannonball, a football, or a stream of water from a fountain.",
+    math: {
+      formula: [
+        "x(t) = v·cos(θ)·t",
+        "y(t) = v·sin(θ)·t − ½gt²",
+        "Range R = v²sin(2θ)/g",
+        "Max height H = v²sin²θ/2g",
+        "Flight time T = 2v·sinθ/g"
+      ],
+      vars: [
+        {sym:"v", desc:"initial launch speed"},
+        {sym:"θ", desc:"launch angle above the ground"},
+        {sym:"g", desc:"gravitational acceleration"},
+        {sym:"t", desc:"time since launch"}
+      ]
+    },
+    params: [
+      { key:"v", label:"Initial velocity", min:2, max:100, step:0.5, default:25, unit:"m/s" },
+      { key:"angle", label:"Launch angle", min:1, max:89, step:1, default:45, unit:"°" },
+      { key:"g", label:"Gravity", min:0.5, max:30, step:0.1, default:9.8, unit:"m/s²" },
+    ],
+    compute(p){
+      const a = p.angle*Math.PI/180;
+      const range = (p.v*p.v*Math.sin(2*a))/p.g;
+      const maxH = (p.v*p.v*Math.sin(a)*Math.sin(a))/(2*p.g);
+      const T = (2*p.v*Math.sin(a))/p.g;
+      return {
+        xLabel:"Distance (m)", yLabel:"Height (m)",
+        xMax: niceNum(range*1.15,false), yMax: niceNum(Math.max(maxH*1.6, range*0.12),false),
+        pathAt(u){ const t=T*u; return {x:p.v*Math.cos(a)*t, y:Math.max(p.v*Math.sin(a)*t-0.5*p.g*t*t,0)}; },
+        raw:{ range, maxH, T, angle:p.angle },
+        extraMarkers:[{x:p.v*Math.cos(a)*(p.v*Math.sin(a)/p.g), y:maxH, color:C.gold}],
+        readouts:[{label:"Range",value:range.toFixed(2),unit:"m"},{label:"Max height",value:maxH.toFixed(2),unit:"m"},{label:"Flight time",value:T.toFixed(3),unit:"s"}]
+      };
+    },
+    scene(ctx, rect, p, spec, progress){
+      const xMaxScene = Math.max(500, niceNum(spec.raw.range*1.15,false));
+      const yMaxScene = Math.max(140, niceNum(spec.raw.maxH*1.6,false));
+      const toPx = sceneMapper(rect, xMaxScene, yMaxScene);
+      const [gx0,gy0] = toPx(0,0), [gx1] = toPx(xMaxScene,0);
+      groundLine(ctx, gx0, gy0, gx1, gy0);
+      // building target near the landing point
+      const bx = spec.raw.range*0.92;
+      drawBuilding(ctx, toPx, bx, yMaxScene*0.02, Math.min(spec.raw.maxH*0.9, yMaxScene*0.55));
+      // dashed guide arc
+      dashedPath(ctx, spec, toPx, 0.5);
+      // cannon at origin
+      const [cx,cy] = toPx(0,0);
+      ctx.save();
+      ctx.translate(cx,cy);
+      ctx.fillStyle = C.ink;
+      ctx.beginPath(); ctx.arc(0,-8,9,0,Math.PI*2); ctx.fill();
+      ctx.rotate(-spec.raw.angle*Math.PI/180);
+      ctx.fillRect(0,-13,34,7);
+      ctx.restore();
+      // ball
+      const u = progress===null?0:progress;
+      const pt = spec.pathAt(u);
+      const [bpx,bpy] = toPx(pt.x,pt.y);
+      if(progress!==null) tracedPath(ctx, spec, toPx, progress);
+      ctx.beginPath(); ctx.arc(bpx,bpy,6,0,Math.PI*2); ctx.fillStyle=C.gold; ctx.fill();
+    }
+  },
+  {
+    id: "pendulum",
+    category: "Physics",
+    title: "Simple pendulum",
+    blurb: "Small-angle swing of a bob on a fixed-length string.",
+    details: "A pendulum swings because gravity constantly pulls the bob back toward the lowest point of its arc, but its own momentum carries it past that point every time — much like a ball rolling back and forth inside a curved bowl. For small swings, this back-and-forth motion is remarkably regular: the time for one full swing barely depends on how wide the swing is, only on the string's length and the strength of gravity. That regularity is exactly what made pendulum clocks reliable timekeepers for centuries.",
+    math: {
+      formula: [
+        "θ(t) = θ₀·cos(ωt)",
+        "ω = √(g/L)",
+        "Period T = 2π√(L/g)"
+      ],
+      vars: [
+        {sym:"L", desc:"string length"},
+        {sym:"θ₀", desc:"starting angle from vertical"},
+        {sym:"g", desc:"gravitational acceleration"},
+        {sym:"ω", desc:"angular frequency of the swing"},
+        {sym:"T", desc:"period — time for one full swing"}
+      ]
+    },
+    params: [
+      { key:"L", label:"String length", min:0.1, max:6, step:0.1, default:1, unit:"m" },
+      { key:"theta0", label:"Starting angle", min:5, max:80, step:1, default:25, unit:"°" },
+      { key:"g", label:"Gravity", min:0.5, max:30, step:0.1, default:9.8, unit:"m/s²" },
+    ],
+    compute(p){
+      const th0 = p.theta0*Math.PI/180;
+      const omega = Math.sqrt(p.g/p.L);
+      const T = 2*Math.PI/omega;
+      const xShift = p.L*Math.sin(th0);
+      return {
+        xLabel:"Horizontal position (m)", yLabel:"Height above lowest point (m)",
+        xMax: niceNum(2*xShift*1.15,false), yMax: niceNum(p.L*(1-Math.cos(th0))*1.6,false),
+        pathAt(u){ const t=T*u; const th=th0*Math.cos(omega*t); return {x:p.L*Math.sin(th)+xShift, y:p.L*(1-Math.cos(th))}; },
+        raw:{ T, omega, th0, L:p.L },
+        readouts:[{label:"Period",value:T.toFixed(2),unit:"s"},{label:"Frequency",value:(1/T).toFixed(2),unit:"Hz"},{label:"Amplitude",value:p.theta0.toFixed(0),unit:"°"}]
+      };
+    },
+    scene(ctx, rect, p, spec, progress){
+      const W=rect.width, H=rect.height;
+      const pivotX = W/2, pivotY = H*0.14;
+      const maxStringPx = H*0.68;
+      const L_MAX = 6; // matches the string-length slider's max — fixed px-per-metre so length actually changes on screen
+      const pxPerMeter = maxStringPx/L_MAX;
+      // ceiling
+      ctx.strokeStyle=C.ink; ctx.lineWidth=3;
+      ctx.beginPath(); ctx.moveTo(pivotX-60,pivotY-6); ctx.lineTo(pivotX+60,pivotY-6); ctx.stroke();
+      hatch(ctx, pivotX-60, pivotY-6, pivotX+60, pivotY-6, 8);
+      ctx.beginPath(); ctx.arc(pivotX,pivotY,3,0,Math.PI*2); ctx.fillStyle=C.ink; ctx.fill();
+      // dashed swing guide
+      ctx.strokeStyle=C.teal; ctx.globalAlpha=0.3; ctx.setLineDash([4,4]); ctx.lineWidth=1.5;
+      ctx.beginPath();
+      for(let i=0;i<=120;i++){
+        const th = spec.raw.th0*Math.cos(2*Math.PI*i/120);
+        const x = pivotX+pxPerMeter*spec.raw.L*Math.sin(th), y=pivotY+pxPerMeter*spec.raw.L*Math.cos(th);
+        i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+      }
+      ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha=1;
+      // bob position
+      const u = progress===null?0:progress;
+      const th = spec.raw.th0*Math.cos(spec.raw.omega*(spec.raw.T*u));
+      const bx = pivotX+pxPerMeter*spec.raw.L*Math.sin(th), by = pivotY+pxPerMeter*spec.raw.L*Math.cos(th);
+      ctx.strokeStyle=C.ink; ctx.lineWidth=1.5;
+      ctx.beginPath(); ctx.moveTo(pivotX,pivotY); ctx.lineTo(bx,by); ctx.stroke();
+      ctx.beginPath(); ctx.arc(bx,by,13,0,Math.PI*2); ctx.fillStyle=C.gold; ctx.fill();
+      ctx.strokeStyle=C.ink; ctx.lineWidth=1; ctx.stroke();
+    }
+  },
+
+  // ---------------- CHEMISTRY ----------------
+  {
+    id: "decay",
+    category: "Chemistry",
+    title: "First-order reaction decay",
+    blurb: "Concentration falling away at a rate proportional to itself.",
+    details: "Many chemical reactions — and radioactive decay too — slow down as the reacting substance runs out, because the rate depends on how much of it is still there. This is called first-order kinetics: the fewer molecules remain, the fewer reaction events happen per second, so the concentration drops quickly at first and then more and more slowly, never quite reaching zero. The half-life — the time for exactly half of what's left to disappear — stays constant throughout the whole process, which is what makes this kind of decay so predictable and useful for dating, dosing, and storage calculations.",
+    math: {
+      formula: [
+        "Rate law: dC/dt = −kC",
+        "C(t) = C₀·e^(−kt)",
+        "Half-life t½ = ln(2)/k"
+      ],
+      vars: [
+        {sym:"C₀", desc:"initial concentration"},
+        {sym:"k", desc:"rate constant"},
+        {sym:"t", desc:"time elapsed"},
+        {sym:"C(t)", desc:"concentration remaining at time t"}
+      ]
+    },
+    params: [
+      { key:"C0", label:"Initial concentration", min:0.05, max:5, step:0.05, default:1, unit:"M" },
+      { key:"k", label:"Rate constant k", min:0.01, max:5, step:0.01, default:0.3, unit:"s⁻¹" },
+    ],
+    compute(p){
+      const halfLife = Math.log(2)/p.k;
+      const tMax = halfLife*5;
+      return {
+        xLabel:"Time (s)", yLabel:"Concentration (M)",
+        xMax: niceNum(tMax,false), yMax: niceNum(p.C0*1.15,false),
+        pathAt(u){ const t=tMax*u; return {x:t, y:p.C0*Math.exp(-p.k*t)}; },
+        raw:{ halfLife, tMax, C0:p.C0 },
+        extraMarkers:[{x:halfLife,y:p.C0/2,color:C.gold}],
+        readouts:[{label:"Half-life",value:halfLife.toFixed(2),unit:"s"},{label:"Initial rate",value:(p.k*p.C0).toFixed(2),unit:"M/s"}]
+      };
+    },
+    scene(ctx, rect, p, spec, progress){
+      const W=rect.width, H=rect.height;
+      const cx=W/2, top=H*0.1, bodyTop=H*0.42, bottom=H*0.85, halfW=W*0.16;
+      // flask outline (erlenmeyer)
+      ctx.strokeStyle=C.ink; ctx.lineWidth=2.5;
+      ctx.beginPath();
+      ctx.moveTo(cx-10,top); ctx.lineTo(cx-10,bodyTop);
+      ctx.lineTo(cx-halfW,bottom); ctx.lineTo(cx+halfW,bottom); ctx.lineTo(cx+10,bodyTop); ctx.lineTo(cx+10,top);
+      ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(cx-16,top); ctx.lineTo(cx+16,top); ctx.stroke();
+      // liquid — resting view shows the settled (fully-elapsed) state so both
+      // C0 and k are visible immediately; Launch replays the drain from t=0
+      const FIXED_T = 20;
+      const u = progress===null?1:progress;
+      const t = FIXED_T*u;
+      const conc = p.C0*Math.exp(-p.k*t);
+      const frac = Math.max(0, Math.min(1, conc/5));
+      const liquidTop = bottom - frac*(bottom-bodyTop-6);
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(cx-10,bodyTop); ctx.lineTo(cx-halfW,bottom); ctx.lineTo(cx+halfW,bottom); ctx.lineTo(cx+10,bodyTop);
+      ctx.closePath(); ctx.clip();
+      ctx.fillStyle=C.teal; ctx.globalAlpha=0.35+0.4*frac;
+      ctx.fillRect(cx-halfW,liquidTop,2*halfW,bottom-liquidTop);
+      ctx.globalAlpha=1;
+      // bubbles
+      if(progress!==null){
+        for(let i=0;i<5;i++){
+          const bt = (progress*3+i/5)%1;
+          const bx = cx-halfW*0.5+i*halfW*0.25;
+          const by = bottom-6-bt*(bottom-liquidTop-10);
+          if(by>liquidTop+4){
+            ctx.beginPath(); ctx.arc(bx,by,2.5,0,Math.PI*2);
+            ctx.fillStyle=C.paper; ctx.globalAlpha=0.7; ctx.fill(); ctx.globalAlpha=1;
+          }
+        }
+      }
+      ctx.restore();
+    }
+  },
+  {
+    id: "titration",
+    category: "Chemistry",
+    title: "Acid–base titration",
+    blurb: "Strong acid titrated with strong base — pH as titrant is added.",
+    details: "Titration is how chemists find the exact concentration of an unknown acid (or base) by slowly adding a solution of known concentration until the two exactly neutralize each other — the equivalence point. Before that point, the solution's pH is dominated by leftover acid; after it, by the excess base. The pH doesn't drift there smoothly — it swings sharply within a drop or two of the equivalence point, which is why titration curves have that steep S-shape, and why an indicator like phenolphthalein (colorless below pH 8.3, pink above) can mark the endpoint so precisely.",
+    math: {
+      formula: [
+        "Moles of acid: n_acid = Ca·Va",
+        "Moles of base added: n_base = Cb·Vb",
+        "Before equivalence: pH = −log[H⁺]",
+        "After equivalence: pH = 14 + log[OH⁻]",
+        "Equivalence volume: Veq = Ca·Va/Cb"
+      ],
+      vars: [
+        {sym:"Ca, Va", desc:"acid concentration and volume"},
+        {sym:"Cb, Vb", desc:"base concentration and volume added"},
+        {sym:"Veq", desc:"volume of base needed to reach neutral"}
+      ]
+    },
+    params: [
+      { key:"Ca", label:"Acid concentration", min:0.01, max:2, step:0.01, default:0.2, unit:"M" },
+      { key:"Va", label:"Acid volume", min:5, max:250, step:5, default:50, unit:"mL" },
+      { key:"Cb", label:"Base concentration", min:0.01, max:2, step:0.01, default:0.2, unit:"M" },
+    ],
+    compute(p){
+      const molAcid = p.Ca*p.Va/1000;
+      const Veq = (molAcid/p.Cb)*1000;
+      const xMax = niceNum(Veq*2.2,false);
+      const phAt = (Vb)=>{
+        const molBase=p.Cb*Vb/1000, totalL=(p.Va+Vb)/1000;
+        if(molBase<molAcid*0.999) return -Math.log10((molAcid-molBase)/totalL);
+        if(molBase>molAcid*1.001) return 14+Math.log10((molBase-molAcid)/totalL);
+        return 7;
+      };
+      return {
+        xLabel:"Base added (mL)", yLabel:"pH", xMax, yMax:14,
+        pathAt(u){ const Vb=xMax*u; return {x:Vb, y:Math.max(0,Math.min(14,phAt(Vb)))}; },
+        raw:{ Veq, xMax, phAt },
+        extraMarkers:[{x:Veq,y:7,color:C.gold}],
+        readouts:[{label:"Equivalence vol.",value:Veq.toFixed(2),unit:"mL"},{label:"Starting pH",value:phAt(0).toFixed(3),unit:""}]
+      };
+    },
+    scene(ctx, rect, p, spec, progress){
+      const W=rect.width, H=rect.height;
+      const cx=W/2;
+      // burette
+      const buT=H*0.06, buB=H*0.5, buHalfW=10;
+      ctx.strokeStyle=C.ink; ctx.lineWidth=2;
+      ctx.beginPath(); ctx.rect(cx-buHalfW,buT,2*buHalfW,buB-buT); ctx.stroke();
+      for(let i=1;i<6;i++){ const y=buT+i*(buB-buT)/6; ctx.beginPath(); ctx.moveTo(cx-buHalfW,y); ctx.lineTo(cx-buHalfW+4,y); ctx.stroke(); }
+      ctx.beginPath(); ctx.moveTo(cx-4,buB); ctx.lineTo(cx+4,buB); ctx.lineTo(cx,buB+10); ctx.closePath(); ctx.fillStyle=C.ink; ctx.fill();
+      // flask
+      const fT=H*0.68, fB=H*0.9, halfW=W*0.14;
+      ctx.beginPath();
+      ctx.moveTo(cx-8,fT); ctx.lineTo(cx-8,fT+14); ctx.lineTo(cx-halfW,fB); ctx.lineTo(cx+halfW,fB); ctx.lineTo(cx+8,fT+14); ctx.lineTo(cx+8,fT);
+      ctx.stroke();
+      const u = progress===null?0:progress;
+      const pH = spec.pathAt(u).y;
+      const pink = pH>=8.3;
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(cx-8,fT+14); ctx.lineTo(cx-halfW,fB); ctx.lineTo(cx+halfW,fB); ctx.lineTo(cx+8,fT+14);
+      ctx.closePath(); ctx.clip();
+      ctx.fillStyle = pink ? C.pink : C.grid;
+      ctx.globalAlpha = pink ? 0.55 : 0.5;
+      ctx.fillRect(cx-halfW,fT+18,2*halfW,fB-fT-18);
+      ctx.globalAlpha=1;
+      ctx.restore();
+      // falling drop
+      if(progress!==null){
+        const dropT=(progress*4)%1;
+        const dy = buB+12+dropT*(fT-buB-12);
+        ctx.beginPath(); ctx.arc(cx,dy,3,0,Math.PI*2); ctx.fillStyle=C.teal; ctx.fill();
+      }
+    }
+  },
+
+  // ---------------- BIOLOGY ----------------
+  {
+    id: "logistic",
+    category: "Biology",
+    title: "Logistic population growth",
+    blurb: "Growth that slows as a population nears its carrying capacity.",
+    details: "Real populations rarely grow forever — food, space, and other resources eventually run out. Logistic growth captures this: when a population is small compared to what its environment can support, it grows almost exponentially, doubling again and again. But as it approaches the environment's carrying capacity, growth slows and eventually levels off, because competition for resources increases. This S-shaped curve shows up everywhere from bacteria in a petri dish to fish in a lake to the human population of a country.",
+    math: {
+      formula: [
+        "Growth equation: dP/dt = rP(1 − P/K)",
+        "Solution: P(t) = K / (1 + ((K−P₀)/P₀)e^(−rt))"
+      ],
+      vars: [
+        {sym:"P₀", desc:"starting population"},
+        {sym:"K", desc:"carrying capacity — the environment's maximum sustainable population"},
+        {sym:"r", desc:"intrinsic growth rate"},
+        {sym:"t", desc:"time elapsed"}
+      ]
+    },
+    params: [
+      { key:"P0", label:"Starting population", min:1, max:500, step:1, default:10, unit:"" },
+      { key:"r", label:"Growth rate r", min:0.01, max:2, step:0.01, default:0.3, unit:"/day" },
+      { key:"K", label:"Carrying capacity", min:50, max:5000, step:50, default:500, unit:"" },
+    ],
+    compute(p){
+      const tMax = 6/p.r;
+      const logistic=(t)=>p.K/(1+((p.K-p.P0)/p.P0)*Math.exp(-p.r*t));
+      const ratio = (p.K-p.P0)/p.P0;
+      const halfT = Math.abs(ratio) < 1e-9 ? 0 : Math.abs((1/p.r)*Math.log(Math.abs(ratio)));
+      return {
+        xLabel:"Time (days)", yLabel:"Population",
+        xMax: niceNum(tMax,false), yMax: niceNum(Math.max(p.K,p.P0)*1.15,false),
+        pathAt(u){ const t=tMax*u; return {x:t, y:logistic(t)}; },
+        raw:{ K:p.K },
+        extraMarkers:[{x:halfT,y:p.K/2,color:C.gold}],
+        readouts:[{label:"Carrying capacity",value:p.K.toFixed(0),unit:""},{label:"Time to half-K",value:halfT.toFixed(2),unit:"days"}]
+      };
+    },
+    scene(ctx, rect, p, spec, progress){
+      const W=rect.width, H=rect.height;
+      const cx=W/2, cy=H*0.52, r=Math.min(W,H)*0.36;
+      ctx.strokeStyle=C.ink; ctx.lineWidth=2.5;
+      ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.stroke();
+      ctx.fillStyle=C.inkSoft; ctx.font='11px ui-monospace, Menlo, Consolas, monospace';
+      ctx.fillText('carrying capacity boundary', cx-70, cy+r+18);
+      const maxDots=70;
+      if(!spec._dotPositions){
+        spec._dotPositions=[];
+        const golden=Math.PI*(3-Math.sqrt(5));
+        for(let i=0;i<maxDots;i++){
+          const rad=r*0.9*Math.sqrt((i+0.5)/maxDots);
+          const th=i*golden;
+          spec._dotPositions.push([cx+rad*Math.cos(th), cy+rad*Math.sin(th)]);
+        }
+      }
+      const u = progress===null?1:progress; // idle shows the settled outcome so slider changes are visible without pressing Launch
+      const FIXED_T = 40; // fixed 40-day window so growth rate r visibly changes how fast the dish fills, not just the shape
+      const t = FIXED_T*u;
+      const pop = p.K/(1+((p.K-p.P0)/p.P0)*Math.exp(-p.r*t));
+      const visible = Math.round((pop/spec.raw.K)*maxDots);
+      spec._dotPositions.slice(0,Math.max(0,Math.min(maxDots,visible))).forEach(([x,y])=>{
+        ctx.beginPath(); ctx.arc(x,y,4,0,Math.PI*2); ctx.fillStyle=C.teal; ctx.globalAlpha=0.75; ctx.fill(); ctx.globalAlpha=1;
+      });
+    }
+  },
+  {
+    id: "michaelis",
+    category: "Biology",
+    title: "Enzyme kinetics",
+    blurb: "Reaction rate vs. substrate concentration (Michaelis–Menten).",
+    details: "Enzymes are biological catalysts that speed up reactions by binding to a specific molecule — the substrate — and converting it into product. At low substrate concentrations, adding more substrate speeds up the reaction almost proportionally, because there's plenty of free enzyme waiting. But every enzyme molecule can only process one substrate at a time — once all the enzymes are constantly occupied, adding more substrate barely helps, and the reaction rate levels off at its maximum, Vmax. Km measures how much substrate is needed to get the enzyme working at half that maximum speed — a low Km means the enzyme grabs its substrate very efficiently.",
+    math: {
+      formula: [ "v = Vmax·[S] / (Km + [S])" ],
+      vars: [
+        {sym:"Vmax", desc:"maximum reaction rate, reached at saturating substrate"},
+        {sym:"Km", desc:"substrate concentration at half of Vmax"},
+        {sym:"[S]", desc:"substrate concentration"},
+        {sym:"v", desc:"reaction rate at a given [S]"}
+      ]
+    },
+    params: [
+      { key:"Vmax", label:"Max rate Vmax", min:1, max:200, step:1, default:20, unit:"μM/s" },
+      { key:"Km", label:"Km", min:0.1, max:100, step:0.1, default:5, unit:"μM" },
+    ],
+    compute(p){
+      const xMax = niceNum(p.Km*8,false);
+      return {
+        xLabel:"Substrate [S] (μM)", yLabel:"Rate v (μM/s)",
+        xMax, yMax: niceNum(p.Vmax*1.15,false),
+        pathAt(u){ const S=xMax*u; return {x:S, y:(p.Vmax*S)/(p.Km+S)}; },
+        raw:{ Vmax:p.Vmax },
+        extraMarkers:[{x:p.Km,y:p.Vmax/2,color:C.gold}],
+        readouts:[{label:"Vmax",value:p.Vmax.toFixed(2),unit:"μM/s"},{label:"Km",value:p.Km.toFixed(2),unit:"μM"}]
+      };
+    },
+    scene(ctx, rect, p, spec, progress){
+      const W=rect.width, H=rect.height;
+      const cx=W/2, cy=H/2;
+      // enzyme blob with active-site notch
+      ctx.fillStyle=C.paperPanelDark; ctx.strokeStyle=C.ink; ctx.lineWidth=2.5;
+      ctx.beginPath();
+      ctx.moveTo(cx-50,cy-10);
+      ctx.quadraticCurveTo(cx-55,cy-40,cx-15,cy-35);
+      ctx.quadraticCurveTo(cx-5,cy-15,cx+15,cy-30);
+      ctx.quadraticCurveTo(cx+55,cy-40,cx+55,cy);
+      ctx.quadraticCurveTo(cx+55,cy+35,cx+10,cy+30);
+      ctx.quadraticCurveTo(cx-5,cy+15,cx-15,cy+32);
+      ctx.quadraticCurveTo(cx-55,cy+35,cx-50,cy-10);
+      ctx.closePath(); ctx.fill(); ctx.stroke();
+
+      const S_FIXED_MAX = Math.max(300, p.Km*4); // fixed substrate axis, not scaled to Km — otherwise every Km looks like the same curve
+      const S_IDLE_REF = 100; // representative substrate level shown at rest, so Km/Vmax changes are visible before you press Launch
+      const vAt = (S) => (p.Vmax*S)/(p.Km+S);
+      const S = progress===null ? S_IDLE_REF : S_FIXED_MAX*progress;
+      const rate = vAt(S);
+      const fraction = Math.max(0, Math.min(1, rate/p.Vmax));
+      const n = 1+Math.round(6*fraction);
+      const t = progress===null?0:progress*10;
+      for(let i=0;i<n;i++){
+        const cyclePos = (t*(0.4+fraction) + i/n)%1;
+        const dist = 70*(1-cyclePos);
+        const angle = i*(2*Math.PI/6);
+        const sx = cx + Math.cos(angle)*dist;
+        const sy = cy + Math.sin(angle)*dist;
+        ctx.beginPath(); ctx.arc(sx,sy,5,0,Math.PI*2);
+        ctx.fillStyle = cyclePos>0.85 ? C.gold : C.teal;
+        ctx.fill();
+      }
+    }
+  },
+
+  // ---------------- MATHEMATICS ----------------
+  {
+    id: "unit-circle",
+    category: "Mathematics",
+    title: "Unit circle & trig functions",
+    blurb: "How a single angle produces sine, cosine, and tangent.",
+    details: "Every point on a circle of radius 1, centered at the origin, can be described by a single angle measured from the positive x-axis. As that angle sweeps around, the point's horizontal position traces out the cosine function and its vertical position traces out the sine function — which is exactly why sine and cosine repeat every 360°. This one picture is the foundation for describing anything that oscillates or rotates: sound waves, alternating current, pendulums, and orbits all reduce to sines and cosines, because they all reduce, in one way or another, to something moving around a circle.",
+    math: {
+      formula: [ "sin θ = y / r", "cos θ = x / r", "tan θ = sin θ / cos θ" ],
+      vars: [
+        {sym:"θ", desc:"angle measured from the positive x-axis"},
+        {sym:"r", desc:"radius of the circle (r = 1 here)"},
+        {sym:"x, y", desc:"coordinates of the point on the circle"}
+      ]
+    },
+    params: [
+      { key:"angle", label:"Angle θ", min:0, max:360, step:1, default:45, unit:"°" },
+    ],
+    compute(p){
+      const rad = p.angle*Math.PI/180;
+      const sinV = Math.sin(rad), cosV = Math.cos(rad);
+      const tanV = Math.abs(cosV) < 1e-6 ? null : Math.tan(rad);
+      return {
+        xLabel:"x", yLabel:"y", xMax:2.4, yMax:2.4,
+        pathAt(u){ const a=u*rad; return {x:Math.cos(a)+1.2, y:Math.sin(a)+1.2}; },
+        raw:{ rad, sinV, cosV, tanV },
+        extraMarkers:[{x:1.2+cosV,y:1.2,color:C.gold},{x:1.2,y:1.2+sinV,color:C.gold}],
+        readouts:[
+          {label:"sin θ", value:sinV.toFixed(3), unit:""},
+          {label:"cos θ", value:cosV.toFixed(3), unit:""},
+          {label:"tan θ", value: tanV===null ? "undefined" : tanV.toFixed(3), unit:""}
+        ]
+      };
+    },
+    scene(ctx, rect, p, spec, progress){
+      const toPx = sceneMapper(rect, spec.xMax, spec.yMax);
+      const [ocx,ocy] = toPx(1.2,1.2);
+      const [edgeX] = toPx(2.2,1.2);
+      const pxRadius = edgeX-ocx;
+      ctx.strokeStyle=C.grid; ctx.lineWidth=1;
+      const [xs]=toPx(0,1.2), [xe]=toPx(2.4,1.2);
+      ctx.beginPath(); ctx.moveTo(xs,ocy); ctx.lineTo(xe,ocy); ctx.stroke();
+      const [,ys]=toPx(1.2,0), [,ye]=toPx(1.2,2.4);
+      ctx.beginPath(); ctx.moveTo(ocx,ys); ctx.lineTo(ocx,ye); ctx.stroke();
+      ctx.strokeStyle=C.ink; ctx.lineWidth=2;
+      ctx.beginPath(); ctx.arc(ocx,ocy,pxRadius,0,Math.PI*2); ctx.stroke();
+
+      const u = progress===null?1:progress;
+      const pt = spec.pathAt(u);
+      const [px,py] = toPx(pt.x,pt.y);
+      ctx.strokeStyle=C.teal; ctx.lineWidth=2;
+      ctx.beginPath(); ctx.moveTo(ocx,ocy); ctx.lineTo(px,py); ctx.stroke();
+      ctx.strokeStyle=C.gold; ctx.setLineDash([4,4]); ctx.globalAlpha=0.6;
+      ctx.beginPath(); ctx.moveTo(px,py); ctx.lineTo(px,ocy); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(px,py); ctx.lineTo(ocx,py); ctx.stroke();
+      ctx.setLineDash([]); ctx.globalAlpha=1;
+      ctx.beginPath(); ctx.arc(px,py,6,0,Math.PI*2); ctx.fillStyle=C.gold; ctx.fill();
+    }
+  },
+
+  // ---------------- EARTH SCIENCE ----------------
+  {
+    id: "tides",
+    category: "Earth Science",
+    title: "Ocean tides",
+    blurb: "How the Moon's gravity stretches Earth's oceans into two bulges.",
+    details: "The Moon pulls harder on the side of Earth facing it than on the far side, stretching the oceans into two bulges — one facing the Moon, one directly opposite. As Earth rotates through these two fixed bulges roughly once a day, any given coastline passes through both, producing two high tides and two low tides in about 24 hours. Because tidal force falls off with the cube of distance (much faster than ordinary gravity, which falls off with the square), even the Moon's slightly elliptical orbit — bringing it a bit closer or farther over a month — noticeably changes tide strength; the closest approaches produce the largest 'spring' tides.",
+    math: {
+      formula: [ "Tidal strength ∝ 1 / d³", "h(t) ≈ A·cos(2ωt),  ω = 2π/T" ],
+      vars: [
+        {sym:"d", desc:"Earth–Moon distance"},
+        {sym:"A", desc:"relative tidal amplitude (this is a simplified index, not real tide heights)"},
+        {sym:"T", desc:"Earth's rotation period (~24 h, simplified)"},
+        {sym:"t", desc:"time"}
+      ]
+    },
+    params: [
+      { key:"distanceFactor", label:"Moon distance", min:0.5, max:2, step:0.05, default:1, unit:"× average" },
+    ],
+    compute(p){
+      const T = 24;
+      const A = 1/Math.pow(p.distanceFactor,3);
+      const omega = 2*Math.PI/T;
+      return {
+        xLabel:"Time (hours)", yLabel:"Relative tide height",
+        xMax:T, yMax: niceNum(2*A*1.15,false),
+        pathAt(u){ const t=T*u; const h=A*Math.cos(2*omega*t); return {x:t, y:h+A}; },
+        raw:{ A, T },
+        extraMarkers:[{x:0,y:2*A,color:C.gold},{x:T/2,y:2*A,color:C.gold}],
+        readouts:[
+          {label:"Relative strength", value:A.toFixed(2), unit:"×"},
+          {label:"Moon distance", value:(p.distanceFactor*384400).toFixed(0), unit:"km"},
+          {label:"High tide every", value:(T/2).toFixed(1), unit:"h"}
+        ]
+      };
+    },
+    scene(ctx, rect, p, spec, progress){
+      const W=rect.width, H=rect.height;
+      const cx=W*0.4, cy=H/2;
+      const earthR=Math.min(W,H)*0.22, bulge=earthR*0.22;
+      ctx.fillStyle=C.paperPanelDark; ctx.strokeStyle=C.ink; ctx.lineWidth=2;
+      ctx.beginPath(); ctx.ellipse(cx,cy,earthR+bulge,earthR,0,0,Math.PI*2); ctx.fill(); ctx.stroke();
+      ctx.strokeStyle=C.grid;
+      ctx.beginPath(); ctx.ellipse(cx,cy,earthR+bulge,earthR*0.3,0,0,Math.PI*2); ctx.stroke();
+
+      const moonDist = Math.min(Math.min(W,H)*0.32*p.distanceFactor, W-cx-earthR-50);
+      const mx = cx+earthR+bulge+moonDist+30, my=cy;
+      ctx.beginPath(); ctx.arc(mx,my,earthR*0.24,0,Math.PI*2); ctx.fillStyle=C.ink; ctx.fill();
+
+      const u = progress===null?0:progress;
+      const obsAngle = 2*Math.PI*u;
+      const ox = cx+(earthR+bulge)*Math.cos(obsAngle);
+      const oy = cy+earthR*Math.sin(obsAngle);
+      ctx.beginPath(); ctx.arc(ox,oy,5,0,Math.PI*2); ctx.fillStyle=C.teal; ctx.fill();
+
+      const barX=W*0.9, barBase=cy+earthR, barTop=cy-earthR;
+      ctx.strokeStyle=C.ink; ctx.lineWidth=1.5;
+      ctx.beginPath(); ctx.moveTo(barX,barBase); ctx.lineTo(barX,barTop); ctx.stroke();
+      const val = spec.pathAt(u).y, frac = Math.max(0,Math.min(1, val/(2*spec.raw.A)));
+      const fillY = barBase-(barBase-barTop)*frac;
+      ctx.fillStyle=C.gold;
+      ctx.fillRect(barX-4,fillY,8,barBase-fillY);
+    }
+  },
+
+  // ---------------- MATERIAL SCIENCE ----------------
+  {
+    id: "stress-strain",
+    category: "Material Science",
+    title: "Stress–strain curve",
+    blurb: "How materials stretch, yield, and eventually fracture under load.",
+    details: "Stretch a material and, up to a point, it behaves like a spring: double the pulling force and it stretches twice as far, then springs back to its original length the moment you let go — the elastic region, governed by Hooke's Law. Push past the yield point, though, and the material permanently rearranges its internal structure; it won't fully spring back anymore. Keep pulling and, depending on how ductile it is, a material can either stretch a long way before finally snapping (ductile metals like copper) or fracture almost immediately after yielding (brittle materials like cast iron or glass).",
+    math: {
+      formula: [ "Elastic region: σ = Eε", "Yield strain εy = σy / E" ],
+      vars: [
+        {sym:"σ", desc:"stress — force per unit area"},
+        {sym:"ε", desc:"strain — fractional stretch"},
+        {sym:"E", desc:"Young's modulus — the material's stiffness"},
+        {sym:"σy", desc:"yield stress — where permanent deformation begins"}
+      ]
+    },
+    params: [
+      { key:"E", label:"Young's modulus E", min:10, max:400, step:5, default:200, unit:"GPa" },
+      { key:"yieldStress", label:"Yield stress", min:50, max:1000, step:10, default:250, unit:"MPa" },
+      { key:"ductility", label:"Fracture strain", min:1, max:40, step:1, default:20, unit:"%" },
+    ],
+    compute(p){
+      const E_MPa = p.E*1000;
+      const yieldStrain = p.yieldStress/E_MPa;
+      const fractureStrain = Math.max(p.ductility/100, yieldStrain*1.05);
+      return {
+        xLabel:"Strain (%)", yLabel:"Stress (MPa)",
+        xMax: niceNum(fractureStrain*100*1.15,false), yMax: niceNum(p.yieldStress*1.2,false),
+        pathAt(u){
+          const strain = fractureStrain*u;
+          const stress = strain<=yieldStrain ? E_MPa*strain : p.yieldStress;
+          return {x:strain*100, y:stress};
+        },
+        raw:{ yieldStrain, fractureStrain, yieldStress:p.yieldStress },
+        extraMarkers:[{x:yieldStrain*100,y:p.yieldStress,color:C.gold}],
+        readouts:[
+          {label:"Yield strain", value:(yieldStrain*100).toFixed(2), unit:"%"},
+          {label:"Modulus E", value:p.E.toFixed(0), unit:"GPa"},
+          {label:"Fracture strain", value:(fractureStrain*100).toFixed(1), unit:"%"}
+        ]
+      };
+    },
+    scene(ctx, rect, p, spec, progress){
+      const W=rect.width, H=rect.height;
+      const baseLen=W*0.32, maxStretch=W*0.38, barY=H/2;
+      const barLeftX=W*0.14;
+      const u = progress===null?1:progress;
+      const pt = spec.pathAt(u);
+      const pastYield = pt.x/100 > spec.raw.yieldStrain;
+      const stretch = maxStretch*u;
+      const barRightX = barLeftX+baseLen+stretch;
+      const thickness = 26*(1-0.3*u);
+      ctx.strokeStyle=C.ink; ctx.lineWidth=6;
+      ctx.beginPath(); ctx.moveTo(barLeftX-6,barY-42); ctx.lineTo(barLeftX-6,barY+42); ctx.stroke();
+      const broken = progress===1;
+      ctx.fillStyle = pastYield ? C.gold : C.teal; ctx.globalAlpha=0.75;
+      ctx.fillRect(barLeftX, barY-thickness/2, (broken?barRightX-barLeftX-10:barRightX-barLeftX), thickness);
+      ctx.globalAlpha=1;
+      ctx.strokeStyle=C.ink; ctx.lineWidth=1.5;
+      ctx.strokeRect(barLeftX, barY-thickness/2, (broken?barRightX-barLeftX-10:barRightX-barLeftX), thickness);
+      ctx.strokeStyle=C.ink; ctx.lineWidth=2;
+      const armX = broken ? barRightX-10 : barRightX;
+      ctx.beginPath(); ctx.moveTo(armX+6,barY); ctx.lineTo(armX+38,barY); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(armX+38,barY); ctx.lineTo(armX+28,barY-6); ctx.lineTo(armX+28,barY+6); ctx.closePath(); ctx.fillStyle=C.ink; ctx.fill();
+    }
+  },
+
+  // ---------------- ASTRONOMY ----------------
+  {
+    id: "orbit",
+    category: "Astronomy",
+    title: "Orbital motion",
+    blurb: "Kepler's laws — why planets move faster near their star.",
+    details: "Kepler discovered that planets don't move in circles at constant speed — they move in ellipses with the star sitting at one focus, not the center. Because of this off-center geometry, a planet sweeps out equal areas in equal times no matter where it is in its orbit, which means it moves fastest when closest to the star (perihelion) and slowest when farthest away (aphelion) — watch the planet below and you'll see it visibly speed up as it swings past the star. His third law ties the whole system together: orbital period depends only on the orbit's size and the star's mass, a relationship precise enough that astronomers still use it to weigh distant stars and detect planets they can't directly see.",
+    math: {
+      formula: [ "Kepler's third law: T² = a³ / M⋆", "Kepler's equation: M = E − e·sinE", "Position: x = a(cosE − e),  y = b·sinE" ],
+      vars: [
+        {sym:"a", desc:"semi-major axis"},
+        {sym:"e", desc:"eccentricity"},
+        {sym:"M⋆", desc:"star mass, in solar masses"},
+        {sym:"T", desc:"orbital period, in years"},
+        {sym:"E", desc:"eccentric anomaly (solved numerically)"},
+        {sym:"b", desc:"semi-minor axis = a√(1−e²)"}
+      ]
+    },
+    params: [
+      { key:"a", label:"Semi-major axis", min:0.2, max:5, step:0.1, default:1, unit:"AU" },
+      { key:"e", label:"Eccentricity", min:0, max:0.9, step:0.05, default:0.3, unit:"" },
+      { key:"starMass", label:"Star mass", min:0.1, max:5, step:0.1, default:1, unit:"M☉" },
+    ],
+    compute(p){
+      const T = Math.sqrt(Math.pow(p.a,3)/p.starMass);
+      const b = p.a*Math.sqrt(1-p.e*p.e);
+      const kepler = (M) => { let E=M; for(let i=0;i<8;i++){ E = E-(E-p.e*Math.sin(E)-M)/(1-p.e*Math.cos(E)); } return E; };
+      return {
+        xLabel:"x (AU)", yLabel:"y (AU)",
+        xMax: niceNum(2*p.a*1.08,false), yMax: niceNum(2*b*1.08,false),
+        pathAt(u){ const M=2*Math.PI*u; const E=kepler(M); return { x:p.a*(Math.cos(E)+1), y:b*(Math.sin(E)+1) }; },
+        raw:{ a:p.a, e:p.e, b, T },
+        extraMarkers:[{ x:p.a*(1+p.e), y:b, color:C.gold }],
+        readouts:[
+          {label:"Orbital period", value:T.toFixed(2), unit:"yr"},
+          {label:"Perihelion", value:(p.a*(1-p.e)).toFixed(2), unit:"AU"},
+          {label:"Aphelion", value:(p.a*(1+p.e)).toFixed(2), unit:"AU"}
+        ]
+      };
+    },
+    scene(ctx, rect, p, spec, progress){
+      const xMaxScene = Math.max(4, niceNum(2*spec.raw.a*1.1,false));
+      const yMaxScene = Math.max(3, niceNum(2*spec.raw.b*1.1,false));
+      const toPx = sceneMapper(rect, xMaxScene, yMaxScene);
+      dashedPath(ctx, spec, toPx, 0.45);
+      const [sx,sy] = toPx(spec.raw.a*(1+spec.raw.e), spec.raw.b);
+      ctx.beginPath(); ctx.arc(sx,sy,10,0,Math.PI*2); ctx.fillStyle=C.gold; ctx.fill();
+      const u = progress===null?0:progress;
+      const pt = spec.pathAt(u);
+      const [px,py] = toPx(pt.x,pt.y);
+      if(progress!==null) tracedPath(ctx, spec, toPx, progress);
+      ctx.beginPath(); ctx.arc(px,py,6,0,Math.PI*2); ctx.fillStyle=C.teal; ctx.fill();
+    }
+  },
+
+  // ---------------- OPTICS ----------------
+  {
+    id: "lens",
+    category: "Physics",
+    title: "Converging lens",
+    blurb: "How a lens bends light to form real or virtual images.",
+    details: "A converging lens bends parallel light rays inward to meet at a focal point. Where the image actually forms depends on how far the object sits from the lens compared to that focal length: place the object beyond the focal length and the lens forms a real, upside-down image on the far side — exactly how a camera or the human eye works. Move the object closer than the focal length, and the lens can no longer converge the rays to a real point; instead it produces an enlarged, upright virtual image on the same side as the object — a magnifying glass.",
+    math: {
+      formula: [ "1/do + 1/di = 1/f", "Magnification m = −di / do" ],
+      vars: [
+        {sym:"do", desc:"object distance from the lens"},
+        {sym:"di", desc:"image distance (positive = real image, negative = virtual)"},
+        {sym:"f", desc:"focal length of the lens"},
+        {sym:"m", desc:"magnification (negative = inverted image)"}
+      ]
+    },
+    params: [
+      { key:"f", label:"Focal length", min:5, max:50, step:1, default:15, unit:"cm" },
+      { key:"do", label:"Object distance", min:5, max:100, step:1, default:35, unit:"cm" },
+    ],
+    compute(p){
+      const denom = 1/p.f - 1/p.do;
+      const di = Math.abs(denom) < 1e-6 ? 9999 : 1/denom;
+      const m = -di/p.do;
+      const ho = 3;
+      const hi = m*ho;
+      const isVirtual = di < 0;
+      const diClamped = Math.max(-80, Math.min(150, di));
+      const mClamped = Math.max(-10, Math.min(10, m));
+      const hiClamped = mClamped*ho;
+      const SHIFT = 60;
+      const xImage = SHIFT + p.do + diClamped;
+      const xObj = SHIFT, xLens = SHIFT + p.do;
+      const yShift = 45;
+      return {
+        xLabel:"Distance along axis (cm)", yLabel:"Height (cm)",
+        xMax: 450, yMax: 90,
+        pathAt(u){ return { x: xObj+(xImage-xObj)*u, y: (yShift+ho)+((yShift+hiClamped)-(yShift+ho))*u }; },
+        raw:{ f:p.f, do:p.do, di, m, isVirtual, xObj, xLens, xImage, ho, hiClamped, yShift },
+        readouts:[
+          {label:"Image distance", value: Math.max(-999,Math.min(999,di)).toFixed(1), unit:"cm"},
+          {label:"Magnification", value: Math.max(-99,Math.min(99,m)).toFixed(2), unit:"×"},
+          {label:"Image type", value: (isVirtual?"Virtual, ":"Real, ")+(m>0?"upright":"inverted"), unit:""}
+        ]
+      };
+    },
+    scene(ctx, rect, p, spec, progress){
+      const toPx = sceneMapper(rect, spec.xMax, spec.yMax);
+      const r = spec.raw;
+      const [ax0,ay0] = toPx(0, r.yShift), [ax1] = toPx(spec.xMax, r.yShift);
+      ctx.strokeStyle=C.grid; ctx.lineWidth=1;
+      ctx.beginPath(); ctx.moveTo(ax0,ay0); ctx.lineTo(ax1,ay0); ctx.stroke();
+      const [lx,ly1] = toPx(r.xLens, r.yShift-35), [,ly2] = toPx(r.xLens, r.yShift+35);
+      ctx.strokeStyle=C.ink; ctx.lineWidth=2.5;
+      ctx.beginPath(); ctx.moveTo(lx,ly1); ctx.lineTo(lx,ly2); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(lx-6,ly1+6); ctx.lineTo(lx,ly1); ctx.lineTo(lx+6,ly1+6); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(lx-6,ly2-6); ctx.lineTo(lx,ly2); ctx.lineTo(lx+6,ly2-6); ctx.stroke();
+      const [ox,oy] = toPx(r.xObj, r.yShift+r.ho);
+      const [ obx, oby0 ] = toPx(r.xObj, r.yShift);
+      ctx.strokeStyle=C.teal; ctx.lineWidth=2.5;
+      ctx.beginPath(); ctx.moveTo(obx,oby0); ctx.lineTo(ox,oy); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(ox-5,oy+8); ctx.lineTo(ox,oy); ctx.lineTo(ox+5,oy+8); ctx.stroke();
+      const [ix,iy] = toPx(r.xImage, r.yShift+r.hiClamped);
+      const [ibx,iby0] = toPx(r.xImage, r.yShift);
+      ctx.strokeStyle = r.isVirtual ? C.gold : C.ink;
+      if(r.isVirtual) ctx.setLineDash([4,4]);
+      ctx.lineWidth=2.5;
+      ctx.beginPath(); ctx.moveTo(ibx,iby0); ctx.lineTo(ix,iy); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(ix-5, iy+(r.hiClamped>0?8:-8)); ctx.lineTo(ix,iy); ctx.lineTo(ix+5, iy+(r.hiClamped>0?8:-8)); ctx.stroke();
+      ctx.setLineDash([]);
+      const u = progress===null?1:progress;
+      const pt = spec.pathAt(u);
+      const [px,py] = toPx(pt.x,pt.y);
+      ctx.strokeStyle=C.gold; ctx.lineWidth=1.5;
+      const [ox2,oy2] = toPx(r.xObj,r.yShift+r.ho);
+      ctx.beginPath(); ctx.moveTo(ox2,oy2); ctx.lineTo(px,py); ctx.stroke();
+      ctx.beginPath(); ctx.arc(px,py,5,0,Math.PI*2); ctx.fillStyle=C.gold; ctx.fill();
+    }
+  },
+
+  // ---------------- CIRCUITS ----------------
+  {
+    id: "circuit",
+    category: "Physics",
+    title: "Series circuit (Ohm's law)",
+    blurb: "How voltage, resistance, and current relate in a simple loop.",
+    details: "In a simple loop with a battery and a resistor, the current that flows is set entirely by the voltage pushing it and the resistance opposing it. Push harder (more voltage) and more current flows; add more resistance and less current flows for the same push. The energy the circuit dissipates as heat — the power — grows with the square of the current, which is why doubling the current in a wire quadruples the heating, not just doubles it.",
+    math: {
+      formula: [ "V = IR  (Ohm's law)", "P = I²R = VI" ],
+      vars: [
+        {sym:"V", desc:"voltage supplied by the battery"},
+        {sym:"I", desc:"current flowing through the loop"},
+        {sym:"R", desc:"resistance"},
+        {sym:"P", desc:"power dissipated as heat"}
+      ]
+    },
+    params: [
+      { key:"V", label:"Voltage", min:1, max:24, step:0.5, default:9, unit:"V" },
+      { key:"R", label:"Resistance", min:1, max:1000, step:1, default:100, unit:"Ω" },
+    ],
+    compute(p){
+      const I = p.V/p.R;
+      const P = I*I*p.R;
+      const Rsweep = 1000;
+      return {
+        xLabel:"Resistance (Ω)", yLabel:"Current (A)",
+        xMax: Rsweep, yMax: niceNum((p.V/5)*1.2, false),
+        pathAt(u){ const Rs = 5+(Rsweep-5)*u; return {x:Rs, y:p.V/Rs}; },
+        raw:{ I, P, V:p.V, R:p.R },
+        readouts:[
+          {label:"Current", value:I.toFixed(3), unit:"A"},
+          {label:"Power dissipated", value:P.toFixed(2), unit:"W"}
+        ]
+      };
+    },
+    scene(ctx, rect, p, spec, progress){
+      const W=rect.width, H=rect.height;
+      const left=W*0.2, right=W*0.8, top=H*0.25, bottom=H*0.75;
+      ctx.strokeStyle=C.ink; ctx.lineWidth=2.5;
+      ctx.beginPath();
+      ctx.moveTo(left,top); ctx.lineTo(right,top); ctx.lineTo(right,bottom); ctx.lineTo(left,bottom); ctx.closePath();
+      ctx.stroke();
+      const midY=(top+bottom)/2;
+      ctx.clearRect(left-3, midY-16, 6, 32);
+      ctx.beginPath(); ctx.moveTo(left,midY-12); ctx.lineTo(left,midY-4); ctx.stroke();
+      ctx.lineWidth=4;
+      ctx.beginPath(); ctx.moveTo(left-6,midY+2); ctx.lineTo(left+6,midY+2); ctx.stroke();
+      ctx.lineWidth=2.5;
+      ctx.beginPath(); ctx.moveTo(left,midY+2); ctx.lineTo(left,midY+12); ctx.stroke();
+      const zigX=right, zigTop=top+18, zigBottom=bottom-18, teeth=6;
+      ctx.beginPath(); ctx.moveTo(zigX,top); ctx.lineTo(zigX,zigTop);
+      for(let i=0;i<teeth;i++){
+        const y=zigTop+(zigBottom-zigTop)*(i+0.5)/teeth;
+        ctx.lineTo(zigX+(i%2===0?10:-10), y);
+      }
+      ctx.lineTo(zigX,zigBottom); ctx.lineTo(zigX,bottom);
+      ctx.stroke();
+
+      const u = progress===null?0:progress;
+      const loops = Math.max(1, Math.min(6, spec.raw.I*8));
+      const perim = 2*(right-left)+2*(bottom-top);
+      const nDots = progress===null ? Math.max(1,Math.round(1+Math.min(5,spec.raw.I*8))) : 5;
+      for(let i=0;i<nDots;i++){
+        const frac = progress===null ? i/nDots : ((u*loops)+i/nDots)%1;
+        const d = frac*perim;
+        let x,y;
+        if(d<right-left){ x=left+d; y=top; }
+        else if(d<(right-left)+(bottom-top)){ x=right; y=top+(d-(right-left)); }
+        else if(d<2*(right-left)+(bottom-top)){ x=right-(d-(right-left)-(bottom-top)); y=bottom; }
+        else { x=left; y=bottom-(d-2*(right-left)-(bottom-top)); }
+        ctx.beginPath(); ctx.arc(x,y,4,0,Math.PI*2); ctx.fillStyle=C.gold; ctx.fill();
+      }
+    }
+  },
+
+  // ---------------- WAVES ----------------
+  {
+    id: "wave-interference",
+    category: "Physics",
+    title: "Wave interference",
+    blurb: "How two overlapping waves reinforce or cancel each other.",
+    details: "When two waves of the same wavelength overlap, they add together point by point — this is superposition. If they arrive in step (their path difference is a whole number of wavelengths) the peaks line up and reinforce into a bigger wave: constructive interference. If they arrive exactly out of step (a path difference of half a wavelength) a peak meets a trough and they cancel out: destructive interference. This same idea produces the colored bands in soap films, the quiet zones inside noise-cancelling headphones, and the pattern in the classic double-slit experiment.",
+    math: {
+      formula: [ "Phase difference δ = 2πΔ/λ", "Resultant amplitude = 2A·|cos(δ/2)|" ],
+      vars: [
+        {sym:"λ", desc:"wavelength of each wave"},
+        {sym:"Δ", desc:"path difference between the two sources"},
+        {sym:"δ", desc:"resulting phase difference"},
+        {sym:"A", desc:"amplitude of each individual wave"}
+      ]
+    },
+    params: [
+      { key:"wavelength", label:"Wavelength", min:10, max:100, step:1, default:40, unit:"cm" },
+      { key:"pathDiff", label:"Path difference", min:0, max:100, step:1, default:20, unit:"cm" },
+    ],
+    compute(p){
+      const lambda=p.wavelength, k=2*Math.PI/lambda, phase=k*p.pathDiff, A0=1;
+      const xRange=lambda*3;
+      const resultantAmp = 2*A0*Math.abs(Math.cos(phase/2));
+      return {
+        xLabel:"Position (cm)", yLabel:"Displacement",
+        xMax: niceNum(xRange*1.05,false), yMax: 5,
+        pathAt(u){ const x=xRange*u; const y=A0*Math.sin(k*x)+A0*Math.sin(k*x-phase); return {x, y:y+2}; },
+        raw:{ lambda, k, phase, A0, xRange },
+        readouts:[
+          {label:"Phase difference", value:(phase*180/Math.PI%360).toFixed(1), unit:"°"},
+          {label:"Resultant amplitude", value:resultantAmp.toFixed(2), unit:"×A"},
+          {label:"Interference", value: resultantAmp>1.9?"Constructive":resultantAmp<0.1?"Destructive":"Partial", unit:""}
+        ]
+      };
+    },
+    scene(ctx, rect, p, spec, progress){
+      const toPx = sceneMapper(rect, spec.xMax, spec.yMax);
+      const drawCurve=(fn,color,alpha)=>{
+        ctx.beginPath();
+        for(let i=0;i<=150;i++){ const x=spec.raw.xRange*i/150; const y=fn(x)+2; const [px,py]=toPx(x,y); i===0?ctx.moveTo(px,py):ctx.lineTo(px,py); }
+        ctx.strokeStyle=color; ctx.globalAlpha=alpha; ctx.lineWidth=1.5; ctx.stroke(); ctx.globalAlpha=1;
+      };
+      drawCurve(x=>spec.raw.A0*Math.sin(spec.raw.k*x), C.teal, 0.4);
+      drawCurve(x=>spec.raw.A0*Math.sin(spec.raw.k*x-spec.raw.phase), C.gold, 0.4);
+      dashedPath(ctx, spec, toPx, 0.55);
+      if(progress!==null) tracedPath(ctx, spec, toPx, progress);
+    }
+  },
+
+  // ---------------- RESONANCE ----------------
+  {
+    id: "resonance",
+    category: "Physics",
+    title: "Driven resonance",
+    blurb: "Why pushing at just the right frequency produces huge swings.",
+    details: "Every oscillating system — a swing, a bridge, a wine glass, a radio circuit — has a natural frequency it prefers to vibrate at. Push it (drive it) at exactly that frequency and even small, repeated pushes build up into a large swing, because each push arrives in step with the motion already underway: resonance. Push it at any other frequency and the pushes fall out of step with the motion, so the response stays small. How sharp and tall that resonance peak is depends on damping — friction or drag draining energy out of the system — with lightly damped systems capable of dramatic, even destructive, resonance.",
+    math: {
+      formula: [ "A(ω) = F₀/m / √((ω₀²−ω²)² + (2ζω₀ω)²)" ],
+      vars: [
+        {sym:"ω₀", desc:"natural angular frequency of the system"},
+        {sym:"ω", desc:"driving angular frequency"},
+        {sym:"ζ", desc:"damping ratio"},
+        {sym:"F₀/m", desc:"driving force per unit mass (normalized to 1 here)"}
+      ]
+    },
+    params: [
+      { key:"f0", label:"Natural frequency", min:0.5, max:5, step:0.1, default:2, unit:"Hz" },
+      { key:"zeta", label:"Damping ratio ζ", min:0.02, max:1, step:0.01, default:0.1, unit:"" },
+      { key:"fd", label:"Driving frequency", min:0.5, max:5, step:0.1, default:2, unit:"Hz" },
+    ],
+    compute(p){
+      const w0=2*Math.PI*p.f0;
+      const ampAt=(f)=>{ const w=2*Math.PI*f; const denom=Math.sqrt(Math.pow(w0*w0-w*w,2)+Math.pow(2*p.zeta*w0*w,2)); return denom<1e-9?1e6:1/denom; };
+      const refAmp=ampAt(p.f0);
+      const currentAmp=ampAt(p.fd);
+      const freqMax=p.f0*3;
+      const cap=refAmp*1.3;
+      return {
+        xLabel:"Driving frequency (Hz)", yLabel:"Amplitude",
+        xMax: niceNum(freqMax*1.05,false), yMax: niceNum(cap*1.1,false),
+        pathAt(u){ const f=freqMax*u; return {x:f, y:Math.min(ampAt(f),cap)}; },
+        raw:{ f0:p.f0, zeta:p.zeta, fd:p.fd, currentAmp, refAmp },
+        extraMarkers:[{x:p.f0,y:Math.min(refAmp,cap),color:C.gold}],
+        readouts:[
+          {label:"Resonant peak at", value:p.f0.toFixed(2), unit:"Hz"},
+          {label:"Amplitude at drive freq.", value:(currentAmp/refAmp).toFixed(2), unit:"× peak"},
+          {label:"Damping ratio ζ", value:p.zeta.toFixed(2), unit:""}
+        ]
+      };
+    },
+    scene(ctx, rect, p, spec, progress){
+      const W=rect.width, H=rect.height;
+      const supportX=W*0.15, cy=H/2;
+      ctx.strokeStyle=C.ink; ctx.lineWidth=3;
+      ctx.beginPath(); ctx.moveTo(supportX,H*0.2); ctx.lineTo(supportX,H*0.8); ctx.stroke();
+      hatch(ctx, supportX, H*0.2, supportX, H*0.2, 0);
+      const pxAmp = 65*Math.min(1, spec.raw.currentAmp/spec.raw.refAmp);
+      const FIXED_T=3;
+      const phase = progress===null ? Math.PI/2 : 2*Math.PI*spec.raw.fd*(FIXED_T*progress);
+      const massX = supportX+130+pxAmp*Math.sin(phase);
+      ctx.strokeStyle=C.teal; ctx.lineWidth=2;
+      const coils=8;
+      ctx.beginPath(); ctx.moveTo(supportX,cy);
+      for(let i=0;i<=coils;i++){
+        const x=supportX+(massX-supportX)*i/coils;
+        const y=cy+((i%2===0)?-8:8);
+        ctx.lineTo(x,y);
+      }
+      ctx.lineTo(massX,cy);
+      ctx.stroke();
+      ctx.beginPath(); ctx.arc(massX,cy,16,0,Math.PI*2); ctx.fillStyle=C.gold; ctx.fill();
+      ctx.strokeStyle=C.ink; ctx.lineWidth=1.5; ctx.stroke();
+      ctx.strokeStyle=C.grid; ctx.setLineDash([3,3]);
+      ctx.beginPath(); ctx.moveTo(supportX+130-pxAmp,cy+40); ctx.lineTo(supportX+130+pxAmp,cy+40); ctx.stroke();
+      ctx.setLineDash([]);
+    }
+  },
+
+  // ---------------- HEAT TRANSFER ----------------
+  {
+    id: "cooling",
+    category: "Physics",
+    title: "Newton's law of cooling",
+    blurb: "Why a hot drink cools fast at first, then slows down.",
+    details: "How quickly something cools depends on how much hotter it is than its surroundings, not on some fixed rate — so a cup of coffee loses heat fast right after pouring, when the temperature gap is large, and cools more and more slowly as it approaches room temperature, technically never quite reaching it. This produces the same exponential-decay shape seen in radioactive decay or a discharging capacitor, just applied to heat instead of matter or charge.",
+    math: {
+      formula: [ "T(t) = T_amb + (T₀ − T_amb)·e^(−kt)" ],
+      vars: [
+        {sym:"T₀", desc:"starting temperature"},
+        {sym:"T_amb", desc:"ambient (room) temperature"},
+        {sym:"k", desc:"cooling rate constant"},
+        {sym:"t", desc:"time elapsed"}
+      ]
+    },
+    params: [
+      { key:"T0", label:"Starting temperature", min:40, max:100, step:1, default:90, unit:"°C" },
+      { key:"Tamb", label:"Ambient temperature", min:0, max:30, step:1, default:22, unit:"°C" },
+      { key:"k", label:"Cooling rate k", min:0.01, max:0.5, step:0.01, default:0.05, unit:"/min" },
+    ],
+    compute(p){
+      const halfDiffTime = Math.log(2)/p.k;
+      const tMax = halfDiffTime*5;
+      return {
+        xLabel:"Time (min)", yLabel:"Temperature (°C)",
+        xMax: niceNum(tMax,false), yMax: niceNum(p.T0*1.1,false),
+        pathAt(u){ const t=tMax*u; return {x:t, y:p.Tamb+(p.T0-p.Tamb)*Math.exp(-p.k*t)}; },
+        raw:{ halfDiffTime, tMax, T0:p.T0, Tamb:p.Tamb, k:p.k },
+        extraMarkers:[{x:halfDiffTime,y:p.Tamb+(p.T0-p.Tamb)/2,color:C.gold}],
+        readouts:[
+          {label:"Half-difference time", value:halfDiffTime.toFixed(1), unit:"min"},
+          {label:"Ambient temp.", value:p.Tamb.toFixed(0), unit:"°C"},
+          {label:"Starting temp.", value:p.T0.toFixed(0), unit:"°C"}
+        ]
+      };
+    },
+    scene(ctx, rect, p, spec, progress){
+      const u = progress===null?1:progress;
+      const t = spec.raw.tMax*u;
+      const temp = spec.raw.Tamb+(spec.raw.T0-spec.raw.Tamb)*Math.exp(-spec.raw.k*t);
+      const fracHot = Math.max(0, Math.min(1, (temp-spec.raw.Tamb)/(spec.raw.T0-spec.raw.Tamb)));
+      const W=rect.width, H=rect.height;
+      const cx=W*0.35, cupTop=H*0.4, cupBottom=H*0.75, halfW=W*0.12;
+      ctx.strokeStyle=C.ink; ctx.lineWidth=2.5;
+      ctx.beginPath();
+      ctx.moveTo(cx-halfW,cupTop); ctx.lineTo(cx-halfW*0.85,cupBottom); ctx.lineTo(cx+halfW*0.85,cupBottom); ctx.lineTo(cx+halfW,cupTop);
+      ctx.stroke();
+      ctx.beginPath(); ctx.arc(cx+halfW+14,(cupTop+cupBottom)/2,16,-Math.PI/2,Math.PI/2); ctx.stroke();
+      ctx.fillStyle = fracHot>0.5?C.gold:C.teal; ctx.globalAlpha=0.5+0.3*fracHot;
+      ctx.fillRect(cx-halfW*0.85, cupTop+10, halfW*1.7, cupBottom-cupTop-10);
+      ctx.globalAlpha=1;
+      if(fracHot>0.15){
+        ctx.strokeStyle=C.inkSoft; ctx.globalAlpha=0.5; ctx.lineWidth=1.5;
+        for(let i=0;i<3;i++){
+          const sx=cx-halfW*0.5+i*halfW*0.5, sh=30*fracHot;
+          ctx.beginPath(); ctx.moveTo(sx,cupTop-4); ctx.quadraticCurveTo(sx-6,cupTop-4-sh*0.5,sx,cupTop-4-sh); ctx.stroke();
+        }
+        ctx.globalAlpha=1;
+      }
+      const thX=W*0.75, thBottom=H*0.75, thTop=H*0.25;
+      ctx.strokeStyle=C.ink; ctx.lineWidth=2;
+      ctx.beginPath(); ctx.moveTo(thX,thTop); ctx.lineTo(thX,thBottom); ctx.stroke();
+      ctx.beginPath(); ctx.arc(thX,thBottom+8,8,0,Math.PI*2); ctx.fillStyle=C.ink; ctx.fill();
+      const fillY = thBottom-(thBottom-thTop)*fracHot;
+      ctx.strokeStyle=C.gold; ctx.lineWidth=4;
+      ctx.beginPath(); ctx.moveTo(thX,thBottom); ctx.lineTo(thX,fillY); ctx.stroke();
+    }
+  },
+
+  // ---------------- CHEMICAL EQUILIBRIUM ----------------
+  {
+    id: "equilibrium",
+    category: "Chemistry",
+    title: "Chemical equilibrium",
+    blurb: "How a reversible reaction settles into a dynamic balance.",
+    details: "Not all reactions run to completion — many settle into a dynamic equilibrium, where the forward and reverse reactions keep happening at equal rates, so the concentrations stop changing even though molecules keep converting back and forth in both directions. Which side the balance favors depends on the relative sizes of the forward and reverse rate constants: a much faster forward reaction pulls the equilibrium toward more product, and vice versa.",
+    math: {
+      formula: [ "A ⇌ B", "[A]eq = (A₀+B₀)·kr / (kf+kr)" ],
+      vars: [
+        {sym:"kf", desc:"forward rate constant"},
+        {sym:"kr", desc:"reverse rate constant"},
+        {sym:"[A]eq", desc:"equilibrium concentration of A"}
+      ]
+    },
+    params: [
+      { key:"kf", label:"Forward rate kf", min:0.01, max:2, step:0.01, default:0.3, unit:"s⁻¹" },
+      { key:"kr", label:"Reverse rate kr", min:0.01, max:2, step:0.01, default:0.15, unit:"s⁻¹" },
+      { key:"A0", label:"Starting [A]", min:0, max:2, step:0.1, default:1, unit:"M" },
+    ],
+    compute(p){
+      const C_total=p.A0;
+      const Aeq = C_total*p.kr/(p.kf+p.kr);
+      const kSum = p.kf+p.kr;
+      const tMax = 5/kSum;
+      return {
+        xLabel:"Time (s)", yLabel:"Concentration (M)",
+        xMax: niceNum(tMax,false), yMax: niceNum(C_total*1.15,false),
+        pathAt(u){ const t=tMax*u; return {x:t, y: Aeq+(p.A0-Aeq)*Math.exp(-kSum*t)}; },
+        raw:{ Aeq, C:C_total, kSum, kf:p.kf, kr:p.kr },
+        extraMarkers:[{x:tMax*0.8,y:Aeq,color:C.gold}],
+        readouts:[
+          {label:"Equilibrium [A]", value:Aeq.toFixed(2), unit:"M"},
+          {label:"Equilibrium [B]", value:(C_total-Aeq).toFixed(2), unit:"M"},
+          {label:"Approach rate", value:kSum.toFixed(2), unit:"s⁻¹"}
+        ]
+      };
+    },
+    scene(ctx, rect, p, spec, progress){
+      const u = progress===null?1:progress;
+      const A = spec.pathAt(u).y, B = spec.raw.C-A;
+      const W=rect.width, H=rect.height;
+      const boxW=W*0.22, boxH=H*0.5, ay=H*0.25;
+      const ax=W*0.16, bx=W*0.62;
+      ctx.strokeStyle=C.ink; ctx.lineWidth=2;
+      ctx.strokeRect(ax,ay,boxW,boxH); ctx.strokeRect(bx,ay,boxW,boxH);
+      const fracA=Math.max(0,Math.min(1,A/(spec.raw.C||1))), fracB=1-fracA;
+      ctx.fillStyle=C.teal; ctx.globalAlpha=0.5;
+      ctx.fillRect(ax,ay+boxH*(1-fracA),boxW,boxH*fracA);
+      ctx.fillStyle=C.gold;
+      ctx.fillRect(bx,ay+boxH*(1-fracB),boxW,boxH*fracB);
+      ctx.globalAlpha=1;
+      ctx.fillStyle=C.ink; ctx.font='14px Georgia, serif';
+      ctx.fillText('A', ax+boxW/2-4, ay-8);
+      ctx.fillText('B', bx+boxW/2-4, ay-8);
+      const midY=ay+boxH/2, arr1Y=midY-14, arr2Y=midY+14;
+      ctx.strokeStyle=C.ink;
+      ctx.lineWidth=Math.max(1,spec.raw.kf*4);
+      ctx.beginPath(); ctx.moveTo(ax+boxW+4,arr1Y); ctx.lineTo(bx-4,arr1Y); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(bx-4,arr1Y); ctx.lineTo(bx-12,arr1Y-5); ctx.lineTo(bx-12,arr1Y+5); ctx.closePath(); ctx.fillStyle=C.ink; ctx.fill();
+      ctx.lineWidth=Math.max(1,spec.raw.kr*4);
+      ctx.beginPath(); ctx.moveTo(bx-4,arr2Y); ctx.lineTo(ax+boxW+4,arr2Y); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(ax+boxW+4,arr2Y); ctx.lineTo(ax+boxW+12,arr2Y-5); ctx.lineTo(ax+boxW+12,arr2Y+5); ctx.closePath(); ctx.fillStyle=C.ink; ctx.fill();
+    }
+  },
+
+  // ---------------- GENETICS ----------------
+  {
+    id: "genetics",
+    category: "Biology",
+    title: "Monohybrid cross",
+    blurb: "Predicting offspring genotypes from two parents' alleles.",
+    details: "Each parent passes on one of their two alleles at random, so combining two parents' possible gametes predicts the proportions of each genotype among their offspring. Because one allele can mask the other (dominance), the visible traits — the phenotypes — don't always match the underlying genotype ratios one-to-one: a heterozygous individual (Aa) looks identical to a homozygous dominant one (AA) even though their genetics differ. This simple bookkeeping trick explained garden-pea inheritance patterns generations before anyone knew what a gene physically was.",
+    math: {
+      formula: [ "P(AA) = p₁(A)·p₂(A)", "P(Aa) = p₁(A)p₂(a) + p₁(a)p₂(A)", "P(aa) = p₁(a)·p₂(a)" ],
+      vars: [
+        {sym:"p₁(A), p₂(A)", desc:"probability each parent contributes a dominant allele"}
+      ]
+    },
+    params: [
+      { key:"parent1", label:"Parent 1 (0=aa, 1=Aa, 2=AA)", min:0, max:2, step:1, default:1, unit:"" },
+      { key:"parent2", label:"Parent 2 (0=aa, 1=Aa, 2=AA)", min:0, max:2, step:1, default:1, unit:"" },
+    ],
+    compute(p){
+      const A1 = p.parent1===2?1:p.parent1===1?0.5:0, a1=1-A1;
+      const A2 = p.parent2===2?1:p.parent2===1?0.5:0, a2=1-A2;
+      const pAA=A1*A2, pAa=A1*a2+a1*A2, paa=a1*a2;
+      return {
+        xLabel:"Genotype", yLabel:"Probability", xMax:3, yMax:1.15,
+        pathAt(u){ const x=u*3; let y; if(x<1) y=pAA; else if(x<2) y=pAa; else y=paa; return {x,y}; },
+        raw:{ pAA, pAa, paa },
+        readouts:[
+          {label:"Dominant phenotype", value:((pAA+pAa)*100).toFixed(0), unit:"%"},
+          {label:"Recessive phenotype", value:(paa*100).toFixed(0), unit:"%"},
+          {label:"Heterozygous (Aa)", value:(pAa*100).toFixed(0), unit:"%"}
+        ]
+      };
+    },
+    scene(ctx, rect, p, spec, progress){
+      const W=rect.width, H=rect.height;
+      const cell=Math.min(W,H)*0.15, gridW=cell*4;
+      const startX=(W-gridW)/2, startY=(H-gridW)/2-14;
+      const numAA=Math.round(spec.raw.pAA*16), numAa=Math.round(spec.raw.pAa*16);
+      let numaa=16-numAA-numAa; if(numaa<0) numaa=0;
+      const order=[];
+      for(let i=0;i<numAA;i++) order.push('AA');
+      for(let i=0;i<numAa;i++) order.push('Aa');
+      for(let i=0;i<numaa;i++) order.push('aa');
+      while(order.length<16) order.push('aa');
+      const u = progress===null?1:progress;
+      const revealCount = Math.round(16*u);
+      const colorFor={AA:C.teal,Aa:C.gold,aa:C.inkSoft};
+      for(let i=0;i<16;i++){
+        const row=Math.floor(i/4), col=i%4;
+        const x=startX+col*cell, y=startY+row*cell;
+        ctx.strokeStyle=C.ink; ctx.lineWidth=1;
+        ctx.strokeRect(x,y,cell-4,cell-4);
+        if(i<revealCount){
+          ctx.fillStyle=colorFor[order[i]]; ctx.globalAlpha=0.7;
+          ctx.fillRect(x+2,y+2,cell-8,cell-8);
+          ctx.globalAlpha=1;
+        }
+      }
+      ctx.font='11px ui-monospace, Menlo, Consolas, monospace';
+      const legend=[['AA',C.teal],['Aa',C.gold],['aa',C.inkSoft]];
+      legend.forEach(([label,color],i)=>{
+        ctx.fillStyle=color; ctx.fillRect(startX+i*60, startY+gridW+14, 10,10);
+        ctx.fillStyle=C.ink; ctx.fillText(label, startX+14+i*60, startY+gridW+23);
+      });
+    }
+  },
+
+  // ---------------- DIFFUSION ----------------
+  {
+    id: "diffusion",
+    category: "Biology",
+    title: "Diffusion",
+    blurb: "How particles spread from where they're concentrated.",
+    details: "Diffusion is the net spreading of particles from a region of high concentration to low concentration, driven simply by random molecular motion — no organized push required. Faster-moving or smaller molecules spread out quicker. Critically, the characteristic spreading distance grows with the square root of time, not proportionally to it, which is why diffusion is fast over short distances (like across a single cell) but far too slow over long distances — which is exactly why the body relies on blood circulation, not diffusion alone, to move oxygen any real distance.",
+    math: {
+      formula: [ "σ(t) = √(2Dt)", "C(x,t) ∝ exp(−x² / 2σ²)" ],
+      vars: [
+        {sym:"D", desc:"diffusion coefficient"},
+        {sym:"t", desc:"time elapsed"},
+        {sym:"σ", desc:"spread (standard deviation) of the concentration profile"},
+        {sym:"x", desc:"position"}
+      ]
+    },
+    params: [
+      { key:"D", label:"Diffusion coefficient", min:0.01, max:2, step:0.01, default:0.3, unit:"cm²/s" },
+    ],
+    compute(p){
+      const tMax=10;
+      return {
+        xLabel:"Time (s)", yLabel:"Spread width σ (cm)",
+        xMax:tMax, yMax: niceNum(Math.sqrt(4*p.D*tMax)*1.2,false),
+        pathAt(u){ const t=tMax*u; return {x:t, y:Math.sqrt(2*p.D*Math.max(t,0.01))}; },
+        raw:{ D:p.D, tMax },
+        readouts:[
+          {label:"Diffusion coefficient", value:p.D.toFixed(2), unit:"cm²/s"},
+          {label:"Spread after 10s", value:Math.sqrt(2*p.D*tMax).toFixed(2), unit:"cm"}
+        ]
+      };
+    },
+    scene(ctx, rect, p, spec, progress){
+      const u = progress===null?1:progress;
+      const t = spec.raw.tMax*u;
+      const sigma = Math.sqrt(2*spec.raw.D*Math.max(t,0.05));
+      const W=rect.width, H=rect.height;
+      const cx=W/2, baseline=H*0.7, plotW=W*0.75, plotH=H*0.4;
+      const xToPx=(x)=>cx+(x/5)*(plotW/2);
+      ctx.beginPath();
+      for(let i=0;i<=120;i++){
+        const x=-5+10*i/120;
+        const conc=Math.exp(-(x*x)/(2*sigma*sigma));
+        const px=xToPx(x), py=baseline-conc*plotH;
+        i===0?ctx.moveTo(px,py):ctx.lineTo(px,py);
+      }
+      ctx.strokeStyle=C.teal; ctx.lineWidth=2.5; ctx.stroke();
+      ctx.lineTo(xToPx(5),baseline); ctx.lineTo(xToPx(-5),baseline); ctx.closePath();
+      ctx.fillStyle=C.teal; ctx.globalAlpha=0.15; ctx.fill(); ctx.globalAlpha=1;
+      ctx.strokeStyle=C.ink; ctx.lineWidth=1.5;
+      ctx.beginPath(); ctx.moveTo(xToPx(-5),baseline); ctx.lineTo(xToPx(5),baseline); ctx.stroke();
+      ctx.strokeStyle=C.gold; ctx.setLineDash([3,3]);
+      [-sigma,sigma].forEach(s=>{
+        const px=xToPx(s);
+        ctx.beginPath(); ctx.moveTo(px,baseline); ctx.lineTo(px,baseline-plotH*Math.exp(-0.5)); ctx.stroke();
+      });
+      ctx.setLineDash([]);
+    }
+  },
+
+  // ---------------- OSMOSIS ----------------
+  {
+    id: "osmosis",
+    category: "Biology",
+    title: "Osmosis",
+    blurb: "Why water crosses a membrane toward the saltier side.",
+    details: "Osmosis is water moving across a membrane that lets water through but blocks the dissolved solute — always flowing from the side with less solute toward the side with more, diluting the stronger side until the pressure of the risen water column balances the pull (or an external force does). This is why plant cells stay rigid in fresh water, why cucumbers shrivel in salty brine, and why IV saline drips are formulated to match the body's own concentration exactly.",
+    math: {
+      formula: [ "Osmotic pull ∝ ΔM  (concentration difference)", "h(t) = h_eq·(1 − e^(−kt))" ],
+      vars: [
+        {sym:"ΔM", desc:"solute concentration difference between the two sides"},
+        {sym:"h_eq", desc:"equilibrium level difference (a simplified illustrative index, not exact units)"},
+        {sym:"k", desc:"rate constant for approach to equilibrium"}
+      ]
+    },
+    params: [
+      { key:"concDiff", label:"Concentration difference", min:0.1, max:2, step:0.1, default:0.5, unit:"mol/L" },
+      { key:"k", label:"Approach rate k", min:0.05, max:1, step:0.05, default:0.2, unit:"/min" },
+    ],
+    compute(p){
+      const maxLevelDiff = p.concDiff*10;
+      const tMax = 5/p.k;
+      return {
+        xLabel:"Time (min)", yLabel:"Water level difference (cm)",
+        xMax: niceNum(tMax,false), yMax: niceNum(maxLevelDiff*1.15,false),
+        pathAt(u){ const t=tMax*u; return {x:t, y:maxLevelDiff*(1-Math.exp(-p.k*t))}; },
+        raw:{ maxLevelDiff, tMax, k:p.k },
+        readouts:[
+          {label:"Equilibrium level diff.", value:maxLevelDiff.toFixed(1), unit:"cm (index)"},
+          {label:"Concentration diff.", value:p.concDiff.toFixed(2), unit:"mol/L"}
+        ]
+      };
+    },
+    scene(ctx, rect, p, spec, progress){
+      const u = progress===null?1:progress;
+      const diff = spec.pathAt(u).y;
+      const fracDiff = diff/(spec.raw.maxLevelDiff||1);
+      const W=rect.width, H=rect.height;
+      const baseY=H*0.75, midY=H*0.45;
+      const leftX=W*0.32, rightX=W*0.58, tubeW=W*0.12;
+      const maxShiftPx=55, shift=maxShiftPx*fracDiff;
+      ctx.strokeStyle=C.ink; ctx.lineWidth=2;
+      ctx.strokeRect(leftX,H*0.2,tubeW,baseY-H*0.2);
+      ctx.strokeRect(rightX,H*0.2,tubeW,baseY-H*0.2);
+      ctx.beginPath(); ctx.moveTo(leftX+tubeW,baseY); ctx.lineTo(rightX,baseY); ctx.stroke();
+      ctx.strokeStyle=C.gold; ctx.setLineDash([2,3]);
+      const midX=(leftX+tubeW+rightX)/2;
+      ctx.beginPath(); ctx.moveTo(midX,baseY); ctx.lineTo(midX,baseY-10); ctx.stroke();
+      ctx.setLineDash([]);
+      const leftLevel=midY+shift*0.5, rightLevel=midY-shift*0.5;
+      ctx.fillStyle=C.teal; ctx.globalAlpha=0.5;
+      ctx.fillRect(leftX,leftLevel,tubeW,baseY-leftLevel);
+      ctx.fillStyle=C.gold;
+      ctx.fillRect(rightX,rightLevel,tubeW,baseY-rightLevel);
+      ctx.globalAlpha=1;
+      ctx.font='11px ui-monospace, Menlo, Consolas, monospace'; ctx.fillStyle=C.ink;
+      ctx.fillText('water', leftX-4, H*0.18);
+      ctx.fillText('solution', rightX-8, H*0.18);
+    }
+  },
+
+  // ---------------- MOLECULAR STRUCTURES ----------------
+  {
+    id: "molecular-structures",
+    category: "Chemistry",
+    title: "Molecular structures",
+    blurb: "Simple 2D diagrams of common molecules using standard bond-line conventions.",
+    details: "Molecules aren't flat, but chemists have used a simple 2D convention for over a century to hint at their real 3D shape without drawing a full model: a solid line is a bond lying in the plane of the page, a solid wedge is a bond coming toward you, and a dashed line is a bond going away from you. The actual shape comes down to one idea — electron pairs around a central atom push each other apart and settle as far from each other as possible (VSEPR theory). That's why water bends into a V, methane spreads its four bonds toward the corners of a tetrahedron, and carbon dioxide stays perfectly straight.",
+    math: {
+      formula: [ "Electron pairs arrange to minimize repulsion (VSEPR)", "Bond angle depends on the number of electron domains and lone pairs" ],
+      vars: [
+        {sym:"θ", desc:"bond angle between two adjacent bonds"},
+        {sym:"n", desc:"number of electron domains around the central atom"}
+      ]
+    },
+    params: [
+      { key:"molecule", label:"Molecule (0=H₂O, 1=CO₂, 2=CH₄, 3=NH₃, 4=O₂)", min:0, max:4, step:1, default:0, unit:"" },
+    ],
+    compute(p){
+      const MOLECULES = [
+        { name:"Water", formula:"H₂O", geometry:"Bent", angle:104.5,
+          atoms:[{el:'O',x:0,y:0.1},{el:'H',x:-0.8,y:-0.6},{el:'H',x:0.8,y:-0.6}],
+          bonds:[[0,1,1],[0,2,1]] },
+        { name:"Carbon dioxide", formula:"CO₂", geometry:"Linear", angle:180,
+          atoms:[{el:'C',x:0,y:0},{el:'O',x:-1,y:0},{el:'O',x:1,y:0}],
+          bonds:[[0,1,2],[0,2,2]] },
+        { name:"Methane", formula:"CH₄", geometry:"Tetrahedral", angle:109.5,
+          atoms:[{el:'C',x:0,y:0},{el:'H',x:0,y:0.9},{el:'H',x:0.85,y:-0.5},{el:'H',x:-0.85,y:-0.5,wedge:'dash'},{el:'H',x:0,y:-0.15,wedge:'wedge'}],
+          bonds:[[0,1,1],[0,2,1],[0,3,1,'dash'],[0,4,1,'wedge']] },
+        { name:"Ammonia", formula:"NH₃", geometry:"Trigonal pyramidal", angle:107,
+          atoms:[{el:'N',x:0,y:0.35},{el:'H',x:-0.85,y:-0.35},{el:'H',x:0.85,y:-0.35},{el:'H',x:0,y:-0.3,wedge:'wedge'}],
+          bonds:[[0,1,1],[0,2,1],[0,3,1,'wedge']] },
+        { name:"Oxygen", formula:"O₂", geometry:"Linear (diatomic)", angle:180,
+          atoms:[{el:'O',x:-0.6,y:0},{el:'O',x:0.6,y:0}],
+          bonds:[[0,1,2]] },
+      ];
+      const idx = Math.max(0, Math.min(MOLECULES.length-1, Math.round(p.molecule)));
+      const lib = MOLECULES[idx];
+      const angleRad = lib.angle*Math.PI/180;
+      return {
+        xLabel:"x", yLabel:"y", xMax:2.4, yMax:2.4,
+        pathAt(u){ const a=u*angleRad; return {x:Math.cos(a)+1.2, y:Math.sin(a)+1.2}; },
+        raw:{ lib },
+        readouts:[
+          {label:"Molecule", value:lib.name+" ("+lib.formula+")", unit:""},
+          {label:"Geometry", value:lib.geometry, unit:""},
+          {label:"Bond angle", value:lib.angle.toFixed(1), unit:"°"}
+        ]
+      };
+    },
+    scene(ctx, rect, p, spec, progress){
+      const lib = spec.raw.lib;
+      const W=rect.width, H=rect.height;
+      const cx=W/2, cy=H/2, scale=Math.min(W,H)*0.22;
+      const toXY=(a)=>({x:cx+a.x*scale, y:cy-a.y*scale});
+      const u = progress===null?1:progress;
+      const revealAtoms = progress===null ? lib.atoms.length : Math.max(1, Math.ceil(lib.atoms.length*u));
+      const elementStyle = {
+        H:{fill:C.paper, r:9, stroke:C.ink},
+        O:{fill:C.gold, r:15, stroke:C.ink},
+        C:{fill:C.inkSoft, r:16, stroke:C.ink},
+        N:{fill:C.teal, r:15, stroke:C.ink},
+      };
+      lib.bonds.forEach(([ai,bi,order,style])=>{
+        if(ai>=revealAtoms || bi>=revealAtoms) return;
+        const A=toXY(lib.atoms[ai]), B=toXY(lib.atoms[bi]);
+        const dx=B.x-A.x, dy=B.y-A.y, len=Math.sqrt(dx*dx+dy*dy)||1;
+        const nx=-dy/len, ny=dx/len;
+        ctx.strokeStyle=C.ink; ctx.lineWidth=2.5;
+        if(style==='dash') ctx.setLineDash([4,4]);
+        if(order===2){
+          ctx.beginPath(); ctx.moveTo(A.x+nx*3,A.y+ny*3); ctx.lineTo(B.x+nx*3,B.y+ny*3); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(A.x-nx*3,A.y-ny*3); ctx.lineTo(B.x-nx*3,B.y-ny*3); ctx.stroke();
+        } else if(style==='wedge'){
+          ctx.beginPath(); ctx.moveTo(A.x,A.y); ctx.lineTo(B.x+nx*5,B.y+ny*5); ctx.lineTo(B.x-nx*5,B.y-ny*5); ctx.closePath();
+          ctx.fillStyle=C.ink; ctx.fill();
+        } else {
+          ctx.beginPath(); ctx.moveTo(A.x,A.y); ctx.lineTo(B.x,B.y); ctx.stroke();
+        }
+        ctx.setLineDash([]);
+      });
+      lib.atoms.forEach((a,i)=>{
+        if(i>=revealAtoms) return;
+        const {x,y}=toXY(a);
+        const st = elementStyle[a.el] || elementStyle.C;
+        ctx.beginPath(); ctx.arc(x,y,st.r,0,Math.PI*2);
+        ctx.fillStyle=st.fill; ctx.fill();
+        ctx.strokeStyle=st.stroke; ctx.lineWidth=1.5; ctx.stroke();
+        ctx.fillStyle=C.ink; ctx.font='11px ui-monospace, Menlo, Consolas, monospace';
+        ctx.textAlign='center'; ctx.textBaseline='middle';
+        ctx.fillText(a.el, x, y);
+        ctx.textAlign='left'; ctx.textBaseline='alphabetic';
+      });
+    }
+  },
+  // __EXPERIMENTS_END__ — the admin panel's "download updated site" feature
+  // finds this exact comment and inserts new experiments just above it.
+];
+
+// ---------------------------------------------------------------------
+// SHELL — generic sidebar, controls, and canvas engine.
+// ---------------------------------------------------------------------
+
+function niceNum(range, round){
+  const exp = Math.floor(Math.log10(range));
+  const frac = range/Math.pow(10,exp);
+  let f;
+  if(round){ f = frac<1.5?1:frac<3?2:frac<7?5:10; }
+  else{ f = frac<=1?1:frac<=2?2:frac<=5?5:10; }
+  return f*Math.pow(10,exp);
+}
+
+const C = {}; // filled once the stylesheet is available
+function loadColors(){
+  const s = getComputedStyle(document.documentElement);
+  C.paper = s.getPropertyValue('--paper').trim();
+  C.paperPanel = s.getPropertyValue('--paper-panel').trim();
+  C.paperPanelDark = '#CFE0EA';
+  C.grid = s.getPropertyValue('--grid').trim();
+  C.ink = s.getPropertyValue('--ink').trim();
+  C.inkSoft = s.getPropertyValue('--ink-soft').trim();
+  C.teal = s.getPropertyValue('--teal').trim();
+  C.gold = s.getPropertyValue('--gold').trim();
+  C.pink = s.getPropertyValue('--pink').trim();
+}
+
+function sceneMapper(rect, xMax, yMax){
+  const padL=rect.width*0.1, padR=rect.width*0.06, padT=rect.height*0.14, padB=rect.height*0.16;
+  const w=rect.width-padL-padR, h=rect.height-padT-padB;
+  const sx=w/xMax, sy=h/yMax;
+  return (x,y)=>[padL+x*sx, padT+h-y*sy];
+}
+function groundLine(ctx,x0,y0,x1,y1){
+  ctx.strokeStyle=C.ink; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.moveTo(x0,y0); ctx.lineTo(x1,y0); ctx.stroke();
+  hatch(ctx,x0,y0,x1,y0,10);
+}
+function hatch(ctx,x0,y0,x1,y1,n){
+  ctx.strokeStyle=C.inkSoft; ctx.lineWidth=1; ctx.globalAlpha=0.5;
+  for(let i=0;i<=n;i++){
+    const x = x0+(x1-x0)*i/n;
+    ctx.beginPath(); ctx.moveTo(x,y0); ctx.lineTo(x-6,y0+10); ctx.stroke();
+  }
+  ctx.globalAlpha=1;
+}
+function drawBuilding(ctx, toPx, xCenter, yBase, height){
+  const [bx,by] = toPx(xCenter, yBase);
+  const width = 34;
+  const [,topY] = toPx(0, yBase+height);
+  ctx.fillStyle=C.paperPanelDark; ctx.strokeStyle=C.ink; ctx.lineWidth=1.5;
+  ctx.fillRect(bx-width/2, topY, width, by-topY);
+  ctx.strokeRect(bx-width/2, topY, width, by-topY);
+  ctx.fillStyle=C.ink;
+  const rows=Math.max(2,Math.floor((by-topY)/16));
+  for(let r=0;r<rows;r++) for(let cIdx=0;cIdx<2;cIdx++){
+    ctx.fillRect(bx-width/2+6+cIdx*14, topY+8+r*16, 6,6);
+  }
+}
+function dashedPath(ctx, spec, toPx, alpha){
+  ctx.strokeStyle=C.teal; ctx.globalAlpha=alpha; ctx.setLineDash([5,5]); ctx.lineWidth=1.5;
+  ctx.beginPath();
+  const steps=220;
+  for(let i=0;i<=steps;i++){ const pt=spec.pathAt(i/steps); const [x,y]=toPx(pt.x,pt.y); i===0?ctx.moveTo(x,y):ctx.lineTo(x,y); }
+  ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha=1;
+}
+function tracedPath(ctx, spec, toPx, progress){
+  ctx.strokeStyle=C.gold; ctx.lineWidth=2.5;
+  ctx.beginPath();
+  const steps=Math.max(24, Math.round(220*progress));
+  for(let i=0;i<=steps;i++){ const pt=spec.pathAt(progress*i/steps); const [x,y]=toPx(pt.x,pt.y); i===0?ctx.moveTo(x,y):ctx.lineTo(x,y); }
+  ctx.stroke();
+}
+
+const state = { currentId: EXPERIMENTS[0].id, values: {}, view: 'scene' };
+EXPERIMENTS.forEach(exp=>{ state.values[exp.id]={}; exp.params.forEach(p=>state.values[exp.id][p.key]=p.default); });
+
+const sidebarEl = document.getElementById('sidebar');
+const controlsEl = document.getElementById('controls');
+const readoutsEl = document.getElementById('readouts');
+const canvas = document.getElementById('plot');
+const ctx = canvas.getContext('2d');
+const expTitleEl = document.getElementById('expTitle');
+const expBlurbEl = document.getElementById('expBlurb');
+const aboutDetailsEl = document.getElementById('aboutDetails');
+const mathFormulaEl = document.getElementById('mathFormula');
+const mathVarsEl = document.getElementById('mathVars');
+const viewBtns = document.querySelectorAll('.view-btn');
+
+let animId=null, animStart=null;
+const ANIM_DURATION=3200;
+
+function buildSidebar(){
+  const categories=[...new Set(EXPERIMENTS.map(e=>e.category))];
+  sidebarEl.innerHTML='';
+  categories.forEach(cat=>{
+    const group=document.createElement('div'); group.className='nav-cat';
+    const title=document.createElement('div'); title.className='nav-cat-title'; title.textContent=cat;
+    group.appendChild(title);
+    EXPERIMENTS.filter(e=>e.category===cat).forEach(exp=>{
+      const btn=document.createElement('button');
+      btn.className='nav-item'+(exp.id===state.currentId?' active':'');
+      btn.textContent=exp.title;
+      btn.addEventListener('click',()=>selectExperiment(exp.id));
+      group.appendChild(btn);
+    });
+    sidebarEl.appendChild(group);
+  });
+}
+function currentExperiment(){ return EXPERIMENTS.find(e=>e.id===state.currentId); }
+
+function buildControls(){
+  const exp=currentExperiment();
+  controlsEl.innerHTML='';
+  exp.params.forEach(p=>{
+    const field=document.createElement('div'); field.className='field';
+    field.innerHTML=`<div class="field-label"><span>${p.label}</span><span class="field-value" data-key="${p.key}"></span></div>
+      <input type="range" min="${p.min}" max="${p.max}" step="${p.step}" value="${state.values[exp.id][p.key]}" data-key="${p.key}">
+      <div class="ticks"><span>${p.min}</span><span>${p.max}</span></div>`;
+    controlsEl.appendChild(field);
+  });
+  const launchWrap=document.createElement('div'); launchWrap.className='field';
+  launchWrap.innerHTML=`<button class="launch-btn" id="launchBtn">Launch</button>`;
+  controlsEl.appendChild(launchWrap);
+  controlsEl.querySelectorAll('input[type=range]').forEach(inp=>{
+    inp.addEventListener('input',()=>{
+      state.values[exp.id][inp.dataset.key]=parseFloat(inp.value);
+      stopAnim(); updateFieldValues(); draw(null);
+    });
+  });
+  document.getElementById('launchBtn').addEventListener('click', launch);
+  updateFieldValues();
+}
+function updateFieldValues(){
+  const exp=currentExperiment();
+  exp.params.forEach(p=>{
+    const el=controlsEl.querySelector(`.field-value[data-key="${p.key}"]`);
+    if(el) el.textContent=state.values[exp.id][p.key]+(p.unit?' '+p.unit:'');
+  });
+}
+function stopAnim(){
+  if(animId){ cancelAnimationFrame(animId); animId=null; }
+  animStart=null;
+  const btn=document.getElementById('launchBtn');
+  if(btn){ btn.disabled=false; btn.textContent='Launch'; }
+}
+function launch(){
+  stopAnim();
+  const btn=document.getElementById('launchBtn');
+  btn.disabled=true; btn.textContent='Running…';
+  animId=requestAnimationFrame(animate);
+}
+function animate(ts){
+  if(!animStart) animStart=ts;
+  let progress=(ts-animStart)/ANIM_DURATION;
+  if(progress>=1){
+    draw(1);
+    const btn=document.getElementById('launchBtn');
+    btn.disabled=false; btn.textContent='Launch';
+    animId=null; animStart=null;
+    return;
+  }
+  draw(progress);
+  animId=requestAnimationFrame(animate);
+}
+function resizeCanvas(){
+  const dpr=window.devicePixelRatio||1;
+  const rect=canvas.getBoundingClientRect();
+  canvas.width=rect.width*dpr; canvas.height=rect.height*dpr;
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  draw(null);
+}
+
+let cachedSpec=null;
+function getSpec(){
+  const exp=currentExperiment();
+  cachedSpec = exp.compute(state.values[exp.id]);
+  return cachedSpec;
+}
+
+function draw(progress){
+  const exp=currentExperiment();
+  const spec=getSpec();
+  const rect=canvas.getBoundingClientRect();
+  ctx.clearRect(0,0,rect.width,rect.height);
+
+  if(state.view==='scene' && exp.scene){
+    exp.scene(ctx, rect, state.values[exp.id], spec, progress);
+  } else {
+    drawData(ctx, rect, spec, progress);
+  }
+
+  readoutsEl.innerHTML = spec.readouts.map(r=>`<div class="readout"><div class="k">${r.label}</div><div class="v">${r.value} <span>${r.unit}</span></div></div>`).join('');
+}
+
+function drawData(ctx, rect, spec, progress){
+  const W=rect.width, H=rect.height;
+  const padL=52,padR=20,padT=20,padB=36;
+  const plotW=W-padL-padR, plotH=H-padT-padB;
+  const sx=plotW/spec.xMax, sy=plotH/spec.yMax;
+  const toPx=(x,y)=>[padL+x*sx, padT+plotH-y*sy];
+
+  ctx.font='11px ui-monospace, Menlo, Consolas, monospace';
+  ctx.strokeStyle=C.grid; ctx.fillStyle=C.inkSoft; ctx.lineWidth=1;
+
+  const xTick=niceNum(spec.xMax/5,true);
+  for(let x=0;x<=spec.xMax+1e-9;x+=xTick){
+    const [px]=toPx(x,0);
+    ctx.beginPath(); ctx.moveTo(px,padT); ctx.lineTo(px,padT+plotH);
+    ctx.globalAlpha=0.35; ctx.stroke(); ctx.globalAlpha=1;
+    ctx.fillText(round1(x), px-8, padT+plotH+16);
+  }
+  const yTick=niceNum(spec.yMax/4,true);
+  for(let y=0;y<=spec.yMax+1e-9;y+=yTick){
+    const [,py]=toPx(0,y);
+    ctx.beginPath(); ctx.moveTo(padL,py); ctx.lineTo(padL+plotW,py);
+    ctx.globalAlpha=0.35; ctx.stroke(); ctx.globalAlpha=1;
+    ctx.fillText(round1(y), 8, py+4);
+  }
+  ctx.fillText(spec.xLabel, padL+plotW-ctx.measureText(spec.xLabel).width, padT+plotH+30);
+  ctx.fillText(spec.yLabel, padL, padT-6);
+
+  ctx.strokeStyle=C.ink; ctx.globalAlpha=0.5;
+  ctx.beginPath();
+  const [bx0,by0]=toPx(0,0), [bx1]=toPx(spec.xMax,0);
+  ctx.moveTo(bx0,by0); ctx.lineTo(bx1,by0); ctx.stroke();
+  ctx.globalAlpha=1;
+
+  ctx.beginPath();
+  const steps=220;
+  for(let i=0;i<=steps;i++){ const pt=spec.pathAt(i/steps); const [px,py]=toPx(pt.x,pt.y); i===0?ctx.moveTo(px,py):ctx.lineTo(px,py); }
+  ctx.strokeStyle=C.teal; ctx.lineWidth=2; ctx.globalAlpha=progress===null?0.55:0.28; ctx.stroke(); ctx.globalAlpha=1;
+
+  (spec.extraMarkers||[]).forEach(m=>{
+    const [px,py]=toPx(m.x,m.y);
+    ctx.beginPath(); ctx.arc(px,py,3,0,Math.PI*2); ctx.fillStyle=m.color||C.gold; ctx.fill();
+  });
+
+  if(progress!==null){
+    ctx.beginPath();
+    for(let i=0;i<=steps;i++){ const u=progress*i/steps; const pt=spec.pathAt(u); const [px,py]=toPx(pt.x,pt.y); i===0?ctx.moveTo(px,py):ctx.lineTo(px,py); }
+    ctx.strokeStyle=C.teal; ctx.lineWidth=2.5; ctx.stroke();
+    const cur=spec.pathAt(progress);
+    const [cpx,cpy]=toPx(cur.x,cur.y);
+    ctx.beginPath(); ctx.arc(cpx,cpy,5,0,Math.PI*2); ctx.fillStyle=C.gold; ctx.fill();
+    ctx.beginPath(); ctx.arc(cpx,cpy,8,0,Math.PI*2); ctx.strokeStyle=C.gold; ctx.globalAlpha=0.4; ctx.stroke(); ctx.globalAlpha=1;
+  }
+}
+
+function round1(n){ return Math.abs(n)<10?n.toFixed(1):Math.round(n); }
+
+function selectExperiment(id){
+  state.currentId=id;
+  stopAnim();
+  const exp=currentExperiment();
+  expTitleEl.textContent=exp.title;
+  expBlurbEl.textContent=exp.blurb;
+  aboutDetailsEl.textContent = exp.details || '';
+  mathFormulaEl.innerHTML = (exp.math && exp.math.formula ? exp.math.formula : []).map(f=>`<div>${f}</div>`).join('');
+  mathVarsEl.innerHTML = (exp.math && exp.math.vars ? exp.math.vars : []).map(v=>`<li><span class="sym">${v.sym}</span><span>${v.desc}</span></li>`).join('');
+  buildSidebar(); buildControls(); resizeCanvas();
+}
+
+viewBtns.forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    state.view=btn.dataset.view;
+    viewBtns.forEach(b=>b.classList.toggle('active', b===btn));
+    stopAnim();
+    draw(null);
+  });
+});
+
+window.addEventListener('resize', resizeCanvas);
+loadColors();
+viewBtns.forEach(b=>b.classList.toggle('active', b.dataset.view===state.view));
+selectExperiment(state.currentId);
+
+// ---------------------------------------------------------------------
+// ADMIN — password-gated panel for adding new experiments. This is a
+// client-side lock only (there's no server here), so it keeps casual
+// visitors out but isn't real security. Don't put anything sensitive
+// behind it — its only job is hiding an "add experiment" form.
+//
+// TO SET YOUR OWN PASSWORD: open this page, open the browser console,
+// and run:
+//   crypto.subtle.digest('SHA-256', new TextEncoder().encode('yourPasswordHere'))
+//     .then(b => console.log([...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('')))
+// copy the hex string it prints, and paste it in place of the value
+// below. Your actual password is never sent anywhere or stored in this
+// file — only its hash is.
+// ---------------------------------------------------------------------
+const ADMIN_PASSWORD_HASH = "eb1cf38eb706688a676cebec5a2589eb25d4b8041744cf4def4fb2b080ee0127"; // your password's hash — the actual password is not stored anywhere in this file
+
+async function sha256Hex(text){
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+  return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+
+const adminLink = document.getElementById('adminLink');
+const adminOverlay = document.getElementById('adminOverlay');
+const adminPassword = document.getElementById('adminPassword');
+const adminError = document.getElementById('adminError');
+const adminSubmit = document.getElementById('adminSubmit');
+const adminCancel = document.getElementById('adminCancel');
+const adminPanel = document.getElementById('adminPanel');
+const adminLock = document.getElementById('adminLock');
+const adminInput = document.getElementById('adminInput');
+const adminEvalError = document.getElementById('adminEvalError');
+const adminPreview = document.getElementById('adminPreview');
+const adminDownload = document.getElementById('adminDownload');
+const adminStatus = document.getElementById('adminStatus');
+
+function openGate(){
+  adminOverlay.hidden = false;
+  adminError.textContent = '';
+  adminPassword.value = '';
+  adminPassword.focus();
+}
+function closeGate(){ adminOverlay.hidden = true; }
+function openPanel(){ adminPanel.hidden = false; sessionStorage.setItem('labAdminUnlocked','1'); }
+function closePanel(){ adminPanel.hidden = true; sessionStorage.removeItem('labAdminUnlocked'); }
+
+adminLink.addEventListener('click', () => {
+  if(sessionStorage.getItem('labAdminUnlocked')==='1'){ openPanel(); }
+  else{ openGate(); }
+});
+adminCancel.addEventListener('click', closeGate);
+adminOverlay.addEventListener('click', (e)=>{ if(e.target===adminOverlay) closeGate(); });
+adminLock.addEventListener('click', closePanel);
+
+adminSubmit.addEventListener('click', async () => {
+  adminError.textContent = '';
+  if(!window.crypto || !window.crypto.subtle){
+    adminError.textContent = "Can't check the password here — this page needs to be loaded from a real web address (http:// or https://), not opened directly as a local file. Upload it to GitHub Pages first, then test the live link.";
+    return;
+  }
+  try{
+    const hash = await sha256Hex(adminPassword.value);
+    if(hash === ADMIN_PASSWORD_HASH){
+      closeGate();
+      openPanel();
+    } else {
+      adminError.textContent = 'Wrong password.';
+    }
+  } catch(err){
+    adminError.textContent = 'Something went wrong checking the password: ' + err.message;
+  }
+});
+adminPassword.addEventListener('keydown', (e)=>{ if(e.key==='Enter') adminSubmit.click(); });
+
+adminPreview.addEventListener('click', () => {
+  adminEvalError.textContent = ''; adminStatus.textContent = '';
+  const text = adminInput.value.trim().replace(/,\s*$/,'');
+  if(!text){ adminEvalError.textContent = 'Paste an experiment object first.'; return; }
+  try{
+    const obj = new Function('C','niceNum', 'return (' + text + ');')(C, niceNum);
+    if(!obj.id || !obj.category || !obj.title || !Array.isArray(obj.params) || typeof obj.compute !== 'function'){
+      adminEvalError.textContent = 'Missing one of: id, category, title, params[], compute().';
+      return;
+    }
+    const existingIdx = EXPERIMENTS.findIndex(e=>e.id===obj.id);
+    if(existingIdx>=0) EXPERIMENTS[existingIdx]=obj; else EXPERIMENTS.push(obj);
+    state.values[obj.id] = {};
+    obj.params.forEach(p=>state.values[obj.id][p.key]=p.default);
+    buildSidebar();
+    selectExperiment(obj.id);
+    adminStatus.textContent = 'Previewing "'+obj.title+'" now — only in this browser tab. Use Download to make it permanent.';
+  } catch(err){
+    adminEvalError.textContent = 'Error: ' + err.message;
+  }
+});
+
+adminDownload.addEventListener('click', async () => {
+  adminEvalError.textContent = ''; adminStatus.textContent = '';
+  const text = adminInput.value.trim();
+  if(!text){ adminEvalError.textContent = 'Paste an experiment object first.'; return; }
+  const entry = text.endsWith(',') ? text : text + ',';
+  try{
+    const res = await fetch(location.href, {cache:'no-store'});
+    if(!res.ok) throw new Error('could not read the current page');
+    const html = await res.text();
+    const marker = '// __EXPERIMENTS_END__';
+    if(!html.includes(marker)) throw new Error('marker not found in this copy of the file');
+    const updated = html.replace(marker, entry + '\n  ' + marker);
+    const blob = new Blob([updated], {type:'text/html'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'index.html';
+    a.click();
+    adminStatus.textContent = 'Downloaded. Upload this index.html to your GitHub repo (overwrite the old one) to make it live for everyone.';
+  } catch(err){
+    adminEvalError.textContent = 'Could not build the file automatically (' + err.message + '). Paste your experiment into index.html by hand, just above the "__EXPERIMENTS_END__" comment, then re-upload.';
+  }
+});
+
+if(sessionStorage.getItem('labAdminUnlocked')==='1') openPanel();
+
+// The Admin button is invisible by default — nobody sees it exists.
+// It only appears if you visit your site with ?admin=1 on the end of
+// the URL, e.g. https://yourname.github.io/your-repo/?admin=1
+// Bookmark that version of the link for yourself; share the plain
+// link (without ?admin=1) with everyone else.
+if(new URLSearchParams(location.search).get('admin')==='1'){
+  adminLink.hidden = false;
+}
+
+
+</script>
+</body>
+</html>
